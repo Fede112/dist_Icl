@@ -1,0 +1,4 @@
+*.out.*
+*.clean
+exe
+outfile*
