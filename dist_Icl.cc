@@ -17,13 +17,12 @@ using namespace std;
 // Small Clustered Alignment structure (only essential data...)
 struct SmallCA
 {
-    int qID;
-    int sID;
-    int sstart;
-    int send;
-    int center; // relative ID of the primary cluster (w.r.t. qID)
+    unsigned int qID;
+    unsigned int sID;
+    unsigned int sstart;
+    unsigned int send;
     
-    SmallCA(int q, int s, int ss, int se, int cen): qID(q), sID(s), sstart(ss), send (se), center(cen) {}
+    SmallCA(unsigned int q, unsigned int s, unsigned int ss, unsigned int se): qID(q), sID(s), sstart(ss), send (se) {}
 
 };
 
@@ -32,9 +31,9 @@ struct SmallCA
 // ALIGNMENTS DISTANCE on the SEARCH
 //---------------------------------------------------------------------------------------------------------
 double dist(SmallCA i, SmallCA j){
-    int hi, lo;
+    unsigned int hi, lo;
     double inte, uni;
-    int istart, iend, jstart, jend;
+    unsigned int istart, iend, jstart, jend;
     istart= i.sstart; iend= i.send; jstart=j.sstart; jend=j.send;
     //calculate intersection
     inte=0;
@@ -51,15 +50,16 @@ double dist(SmallCA i, SmallCA j){
 
 //read the line of an (OPENED) ifstream *file* into a ClusteredAlignment *ca*
 int linetoSCA(ifstream& fileptr, SmallCA &SCA){
-    int q, s, ss, se, cen;
+    // int is 4 bytes. long int is already 8 bytes
+    unsigned int q, s, ss, se;
 
     string line;
     if(getline(fileptr, line)){
     istringstream iss(line); // make fileline into stream
     //read from stream
-    iss >> q >> cen >> s >> ss >> se;
+    iss >> q >> s >> ss >> se;
     //put in alignment B
-        SCA=SmallCA(q, s, ss, se, cen);
+        SCA=SmallCA(q, s, ss, se);
         return 0;}
     else if (fileptr.eof() ) return -1; //END OF FILE
     else return 1; // ERROR
@@ -69,7 +69,7 @@ int linetoSCA(ifstream& fileptr, SmallCA &SCA){
 //print a ClusteredAlignment TO STDOUT
 void printSCA( SmallCA SCA) {
 
-    cout << SCA.qID << " " << SCA.sID << " " << SCA.sstart << " " << SCA.send << " " << SCA.center << endl;
+    cout << SCA.qID << " " << SCA.sID << " " << SCA.sstart << " " << SCA.send << endl;
     
 }
 
@@ -94,7 +94,8 @@ int main(int argc, char** argv) {
     
     tstart = time(NULL); 
 
-    map<string, int> countingmap;  //map to be used to store the counts of matches between two clusters.
+    // map<string, int> countingmap;  //map to be used to store the counts of matches between two clusters.
+    map<unsigned int, map<unsigned int,unsigned int> >  countingmap;
     // key is LONG INT formed by [OLD qID*100+cl_idrel} qid_clidrel and it is a univoque identifier for a primary cluster (cl_idrel<=20 by definition on primarycl.cc)
     //map<int,int> clpops; //ma to be used to store the poulation of the clusters; to be used when computing distances. key is qID*100+cl_idrel
     
@@ -113,8 +114,8 @@ int main(int argc, char** argv) {
     
     int s0=-1;
     
-    SmallCA alA(-10, -10, -10, -10, -10);
-    SmallCA alB(-10, -10, -10, -10, -10);
+    SmallCA alA(0, 0, 0, 0);
+    SmallCA alB(0, 0, 0, 0);
     // support variables for reading files
     
     // OPEN THE TWO B FILES, READ BOTH'S FIST LINE, FIND SMALLEST sID
@@ -196,7 +197,7 @@ int main(int argc, char** argv) {
                     if( dist(vecA[i],vecB[j]) < 0.2 ) 
                     {
 
-                    string couple_id;
+                    // string couple_id;
                     // stringstream tmps;
 
                     // if(vecA[i].qID<=vecB[j].qID) tmps <<  vecA[i].qID << "_" << vecA[i].center << " " << vecB[j].qID << "_" << vecB[j].center << " ";
@@ -206,13 +207,14 @@ int main(int argc, char** argv) {
                         if(vecA[i].qID<=vecB[j].qID)
                         {
                             // couple_id = fmt::format("The answer is {}.", 22);
-                            couple_id = fmt::format("{}_{} {}_{} ", vecA[i].qID, vecA[i].center, vecB[j].qID, vecB[j].center);
-                            
+                            // couple_id = fmt::format("{}_{} {}_{} ", vecA[i].qID, vecB[j].qID);
+                            ++countingmap[ vecA[i].qID ][ vecB[j].qID ];                            
                         } 
                         else
                         {
                             // couple_id = fmt::format("The answer is {}.", 42);
-                            couple_id = fmt::format("{}_{} {}_{} ", vecB[j].qID, vecB[j].center, vecA[i].qID, vecA[i].center);
+                            // couple_id = fmt::format("{}_{} {}_{} ", vecB[j].qID, vecA[i].qID);
+                            ++countingmap[ vecA[j].qID ][ vecB[i].qID ];                            
                         } 
 
 
@@ -220,7 +222,7 @@ int main(int argc, char** argv) {
                     // couple_id = tmps.str();
 
 
-                    ++countingmap[couple_id];
+                    // ++countingmap[couple_id];
                           
                     }   
                 }
@@ -235,12 +237,13 @@ int main(int argc, char** argv) {
     
     stop:
     // PRINT MAP
-    map<string, int>::iterator itr; 
-    for (itr = countingmap.begin(); itr != countingmap.end(); ++itr) { 
-        cout << itr->first << ' ' << itr->second << '\n'; 
+    // map<unsigned int, map<unsigned int, unsigned int>::iterator itr_out; 
+    // map<unsigned int, unsigned int>::iterator itr_in; 
+    for (auto itr_out = countingmap.begin(); itr_out != countingmap.end(); ++itr_out) { 
+        for (auto itr_in = itr_out->second.begin(); itr_in != itr_out->second.end(); ++itr_in)
+        cout << itr_out->first << ' ' << itr_in->first << ' ' << itr_in->second << '\n'; 
     } 
 
-    
     
     infile1.close();
     infile2.close();

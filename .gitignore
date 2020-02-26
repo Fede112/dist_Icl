@@ -3,3 +3,4 @@
 *.x
 outfile*
 ./data/
+type_test.cc
