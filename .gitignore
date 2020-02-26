@@ -1,4 +1,5 @@
 *.out.*
 *.clean
-exe
+*.x
 outfile*
+./data/

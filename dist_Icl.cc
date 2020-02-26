@@ -8,11 +8,9 @@
 #include <map>
 #include <time.h>  
 #include <iomanip>   
-
-#include "fmt/format.h"
-
 using namespace std;
 
+#include "fmt/format.h"
 
 
 
@@ -85,9 +83,6 @@ void printSCA( SmallCA SCA) {
 
 int main(int argc, char** argv) {
 
-    std::ios_base::sync_with_stdio(false);
-
-
     //time checking variables
     double max_hours; max_hours=atof(argv[4]);
     time_t tstart, tend; 
@@ -104,7 +99,7 @@ int main(int argc, char** argv) {
     //map<int,int> clpops; //ma to be used to store the poulation of the clusters; to be used when computing distances. key is qID*100+cl_idrel
     
     ifstream infile1, infile2; // input (contain clustered alignments); say "B" files (B as Block, eaach block contains data foro
-    // ifstream centers1, centers2; // input file containing, for each cluster, center and POP
+    ifstream centers1, centers2; // input file containing, for each cluster, center and POP
     ofstream outfile; // output
 
     int checkA, checkB;
@@ -114,7 +109,7 @@ int main(int argc, char** argv) {
     
     string lineA, lineB;
     
-    // istringstream issA, issB;
+    istringstream issA, issB;
     
     int s0=-1;
     
@@ -156,10 +151,7 @@ int main(int argc, char** argv) {
     //scorri il file B finché O non c'è un match O scavalchi il valore che comanda (sidA>=sidB)
     while(!infile1.eof() && !infile2.eof())
     {
-
-        // read fileB until alB.sID>alA.sID
-        while(alB.sID<alA.sID)
-        {
+        while(alB.sID<alA.sID){
             //cout << alA.sID << " " << alB.sID << endl;
             checkB=linetoSCA(*Bfile,alB);
             if(checkB<0) break; //file B ended.
@@ -170,7 +162,7 @@ int main(int argc, char** argv) {
         //se > allora cambia
         if(alB.sID>alA.sID){ swap(alA,alB); swap(Afile,Bfile);  }
         //se = allora "pappappero"
-        else if(alB.sID==alA.sID)
+        else if(alB.sID==alA.sID) 
         {
             s0 = alA.sID;
             //cout << "MATCH FOUND" << endl;
@@ -180,20 +172,12 @@ int main(int argc, char** argv) {
             // vecA.push_back(alA);
             // vecB.push_back(alB);
             
-            // do{ //appendi tutti gli altri che seguono con la stessa sID (sono sortati wrt sID apposta..) ---- A
-            //     checkA=linetoSCA(*Afile,alA);
-            //     if(checkA<0) break; //file A ended.
-            //     else if(checkA>0){cerr << "(4)ERROR: one of the two files cannot be read." << endl; return 2;}
-            //     if(alA.sID!=s0) break;
-            //     vecA.push_back(alA);
-            // }while(alA.sID==s0);
-
-            
             do{ //appendi tutti gli altri che seguono con la stessa sID (sono sortati wrt sID apposta..) ---- A
                 vecA.push_back(alA);
                 checkA=linetoSCA(*Afile,alA);
                 if(checkA<0) break; //file A ended.
                 else if(checkA>0){cerr << "(4)ERROR: one of the two files cannot be read." << endl; return 2;}
+                // if(alA.sID!=s0) break;
             }while(alA.sID==s0);
             
             do{ //appendi tutti gli altri che seguono con la stessa sID (sono sortati wrt sID apposta..) ---- B
@@ -201,10 +185,10 @@ int main(int argc, char** argv) {
                 checkB=linetoSCA(*Bfile,alB);
                 if(checkB<0) break; //file B ended.
                 else if(checkB>0){cerr << "(5)ERROR: one of the two files cannot be read." << endl; return 2;}
+                // if(alB.sID!=s0) break;
             }while(alB.sID==s0);
             
             //compute distances on selected alignments with the same sID
-
             for(int i=0; i<vecA.size();++i)
             {
                 for(int j=0; j<vecB.size();++j)
@@ -248,6 +232,7 @@ int main(int argc, char** argv) {
         }
     }
     
+    
     stop:
     // PRINT MAP
     map<string, int>::iterator itr; 
@@ -255,6 +240,7 @@ int main(int argc, char** argv) {
         cout << itr->first << ' ' << itr->second << '\n'; 
     } 
 
+    
     
     infile1.close();
     infile2.close();
@@ -274,6 +260,7 @@ int main(int argc, char** argv) {
 
 
 
+
 }
 
 
@@ -281,17 +268,3 @@ int main(int argc, char** argv) {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-                        
