@@ -16,6 +16,7 @@ default:$(EXE)
 $(EXE): dist_Icl.o 
 # $(EXE): $(OBJS)
 	$(CC) $^ -o $@  $(LDFLAGS)
+	@rm $^
 
 %.o: %.cc
 	$(CC) -c $< -o $@  $(CFLAGS) 
