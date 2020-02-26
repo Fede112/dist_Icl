@@ -10,7 +10,6 @@
 #include <iomanip>   
 using namespace std;
 
-#include "fmt/format.h"
 
 
 
@@ -149,8 +148,7 @@ int main(int argc, char** argv) {
     if(alB.sID>alA.sID){ swap(alA,alB); swap(Afile,Bfile);  }
     
     //scorri il file B finché O non c'è un match O scavalchi il valore che comanda (sidA>=sidB)
-    while(!infile1.eof() && !infile2.eof())
-    {
+    while(!infile1.eof() && !infile2.eof()){
         while(alB.sID<alA.sID){
             //cout << alA.sID << " " << alB.sID << endl;
             checkB=linetoSCA(*Bfile,alB);
@@ -162,76 +160,58 @@ int main(int argc, char** argv) {
         //se > allora cambia
         if(alB.sID>alA.sID){ swap(alA,alB); swap(Afile,Bfile);  }
         //se = allora "pappappero"
-        else if(alB.sID==alA.sID) 
-        {
-            s0 = alA.sID;
+        else if(alB.sID==alA.sID) {
+        s0 = alA.sID;
             //cout << "MATCH FOUND" << endl;
             //crea il vettore dove metterò tutti quelli con la stessa sID (1 x file)
             vector <SmallCA> vecA, vecB;
             //appendi i due allineamenti che ho già individuato
-            // vecA.push_back(alA);
-            // vecB.push_back(alB);
+            vecA.push_back(alA);
+            vecB.push_back(alB);
             
             do{ //appendi tutti gli altri che seguono con la stessa sID (sono sortati wrt sID apposta..) ---- A
-                vecA.push_back(alA);
                 checkA=linetoSCA(*Afile,alA);
                 if(checkA<0) break; //file A ended.
                 else if(checkA>0){cerr << "(4)ERROR: one of the two files cannot be read." << endl; return 2;}
-                // if(alA.sID!=s0) break;
+                if(alA.sID!=s0) break;
+                vecA.push_back(alA);
             }while(alA.sID==s0);
             
             do{ //appendi tutti gli altri che seguono con la stessa sID (sono sortati wrt sID apposta..) ---- B
-                vecB.push_back(alB);
                 checkB=linetoSCA(*Bfile,alB);
                 if(checkB<0) break; //file B ended.
                 else if(checkB>0){cerr << "(5)ERROR: one of the two files cannot be read." << endl; return 2;}
-                // if(alB.sID!=s0) break;
+                if(alB.sID!=s0) break;
+                vecB.push_back(alB);
             }while(alB.sID==s0);
             
             //compute distances on selected alignments with the same sID
-            for(int i=0; i<vecA.size();++i)
-            {
-                for(int j=0; j<vecB.size();++j)
-                {                    
-                    if( dist(vecA[i],vecB[j]) < 0.2 ) 
-                    {
 
-                    string couple_id;
-                    // stringstream tmps;
-
-                    // if(vecA[i].qID<=vecB[j].qID) tmps <<  vecA[i].qID << "_" << vecA[i].center << " " << vecB[j].qID << "_" << vecB[j].center << " ";
-                    // else tmps <<  vecB[j].qID << "_" << vecB[j].center << " " << vecA[i].qID << "_" << vecA[i].center << " ";
+            for(int i=0; i<vecA.size();++i){
+                for(int j=0; j<vecB.size();++j){
                     
+                    if( dist(vecA[i],vecB[j]) < 0.2 ) {
 
-                        if(vecA[i].qID<=vecB[j].qID)
-                        {
-                            // couple_id = fmt::format("The answer is {}.", 22);
-                            couple_id = fmt::format("{}_{} {}_{} ", vecA[i].qID, vecA[i].center, vecB[j].qID, vecB[j].center);
-                            
-                        } 
-                        else
-                        {
-                            // couple_id = fmt::format("The answer is {}.", 42);
-                            couple_id = fmt::format("{}_{} {}_{} ", vecB[j].qID, vecB[j].center, vecA[i].qID, vecA[i].center);
-                        } 
+            string couple_id;
+            stringstream tmps;
 
+            if(vecA[i].qID<=vecB[j].qID) tmps <<  vecA[i].qID << "_" << vecA[i].center << " " << vecB[j].qID << "_" << vecB[j].center << " ";
+            else tmps <<  vecB[j].qID << "_" << vecB[j].center << " " << vecA[i].qID << "_" << vecA[i].center << " ";
+            couple_id = tmps.str();
 
-
-                    // couple_id = tmps.str();
-
-
-                    ++countingmap[couple_id];
-                          
+            ++countingmap[couple_id];
+                  
                     }   
                 }
             }
 
-            tend = time(NULL); 
-            time_taken=difftime(tend, tstart)/3600.;
-            if(time_taken>max_hours)  {cerr<< "\n ---- RECOVERY_ID "<< s0 << " time_taken " << time_taken << endl; goto stop;}
+    tend = time(NULL); 
+    time_taken=difftime(tend, tstart)/3600.;
+    if(time_taken>max_hours)  {cerr<< "\n ---- RECOVERY_ID "<< s0 << " time_taken " << time_taken << endl; goto stop;}
+
+
         }
     }
-    
     
     stop:
     // PRINT MAP

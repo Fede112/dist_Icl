@@ -4,7 +4,7 @@ SHELL=/bin/sh
 CC=g++
 # CFLAGS= -Wall -Wextra -O3 -ffast-math -fexpensive-optimizations -msse3 -lmft
 CFLAGS= -O3
-LDFLAGS= -lfmt
+LDFLAGS= 
 DEBUG= -g -ggdb
 
 EXE = dist_Icl.x
