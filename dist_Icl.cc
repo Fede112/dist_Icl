@@ -214,7 +214,7 @@ int main(int argc, char** argv) {
                         {
                             // couple_id = fmt::format("The answer is {}.", 42);
                             // couple_id = fmt::format("{}_{} {}_{} ", vecB[j].qID, vecA[i].qID);
-                            ++countingmap[ vecA[j].qID ][ vecB[i].qID ];                            
+                            ++countingmap[ vecB[j].qID ][ vecA[i].qID ];                            
                         } 
 
 
