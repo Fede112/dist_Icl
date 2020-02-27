@@ -13,8 +13,8 @@ OBJS = dist_Icl.o
 
 default:$(EXE)
 
-$(EXE): dist_Icl.o 
 # $(EXE): $(OBJS)
+$(EXE): dist_Icl.o 
 	$(CC) $^ -o $@  $(LDFLAGS)
 	@rm $^
 
@@ -25,7 +25,7 @@ $(EXE): dist_Icl.o
 
 
 run:$(EXE)
-	./$(EXE) ./data/BIG1_map2.clean  ./data/BIG2_map2.clean 0 0.02 > outfile
+	./$(EXE) ./data/BIG1_map2.clean  ./data/BIG2_map2.clean 0 0.02
 # this is a minimsl run (parameter 0.01 means 0.01 hours) that starts from the recovery id 0 (i.e. from the very beginnig of the file)
 
 clean:

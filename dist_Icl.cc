@@ -73,6 +73,19 @@ void printSCA( SmallCA SCA) {
     
 }
 
+// long long option_3(std::size_t bytes)
+// {
+//     std::vector<uint64_t> data = GenerateData(bytes);
+
+//     std::ios_base::sync_with_stdio(false);
+//     auto startTime = std::chrono::high_resolution_clock::now();
+//     auto myfile = std::fstream("file.binary", std::ios::out | std::ios::binary);
+//     myfile.write((char*)&data[0], bytes);
+//     myfile.close();
+//     auto endTime = std::chrono::high_resolution_clock::now();
+
+//     return std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
+// }
 
 
 //_______________________________________________________________________________________________________//
@@ -101,7 +114,6 @@ int main(int argc, char** argv) {
     
     ifstream infile1, infile2; // input (contain clustered alignments); say "B" files (B as Block, eaach block contains data foro
     ifstream centers1, centers2; // input file containing, for each cluster, center and POP
-    ofstream outfile; // output
 
     int checkA, checkB;
     
@@ -196,34 +208,14 @@ int main(int argc, char** argv) {
                 {                    
                     if( dist(vecA[i],vecB[j]) < 0.2 ) 
                     {
-
-                    // string couple_id;
-                    // stringstream tmps;
-
-                    // if(vecA[i].qID<=vecB[j].qID) tmps <<  vecA[i].qID << "_" << vecA[i].center << " " << vecB[j].qID << "_" << vecB[j].center << " ";
-                    // else tmps <<  vecB[j].qID << "_" << vecB[j].center << " " << vecA[i].qID << "_" << vecA[i].center << " ";
-                    
-
                         if(vecA[i].qID<=vecB[j].qID)
                         {
-                            // couple_id = fmt::format("The answer is {}.", 22);
-                            // couple_id = fmt::format("{}_{} {}_{} ", vecA[i].qID, vecB[j].qID);
                             ++countingmap[ vecA[i].qID ][ vecB[j].qID ];                            
                         } 
                         else
                         {
-                            // couple_id = fmt::format("The answer is {}.", 42);
-                            // couple_id = fmt::format("{}_{} {}_{} ", vecB[j].qID, vecA[i].qID);
                             ++countingmap[ vecB[j].qID ][ vecA[i].qID ];                            
                         } 
-
-
-
-                    // couple_id = tmps.str();
-
-
-                    // ++countingmap[couple_id];
-                          
                     }   
                 }
             }
@@ -239,12 +231,38 @@ int main(int argc, char** argv) {
     // PRINT MAP
     // map<unsigned int, map<unsigned int, unsigned int>::iterator itr_out; 
     // map<unsigned int, unsigned int>::iterator itr_in; 
-    for (auto itr_out = countingmap.begin(); itr_out != countingmap.end(); ++itr_out) { 
-        for (auto itr_in = itr_out->second.begin(); itr_in != itr_out->second.end(); ++itr_in)
-        cout << itr_out->first << ' ' << itr_in->first << ' ' << itr_in->second << '\n'; 
+
+
+
+
+    const std::size_t lines = 100000;
+    std::size_t bytes;
+    bytes = 3 * sizeof(unsigned int) * lines; // size in Bytes
+    std::size_t j = 0;
+
+    // cout << "MB: " << bytes / 1024. / 1024. << endl;
+    unsigned int *p = new unsigned int[3*lines];
+
+    auto outfile = std::fstream("outfile.b", std::ios::out | std::ios::binary);
+
+
+    // auto myfile = std::fstream("outfile.binary", std::ios::out | std::ios::binary);
+    for (auto itr_out = countingmap.cbegin(); itr_out != countingmap.cend(); ++itr_out) { 
+        for (auto itr_in = itr_out->second.cbegin(); itr_in != itr_out->second.cend(); ++itr_in, ++j)
+        {
+            p[j] = itr_out->first;
+            p[j+1] = itr_in->first;
+            p[j+2] = itr_in->second;
+            if(j == lines-1)
+            {
+                outfile.write((char*)p, bytes);
+                j = 0;
+            }
+        }
+            // cout << itr_out->first << ' ' << itr_in->first << ' ' << itr_in->second << '\n'; 
     } 
 
-    
+    outfile.close();
     infile1.close();
     infile2.close();
 
