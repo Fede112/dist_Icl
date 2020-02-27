@@ -7,4 +7,4 @@ outfile*
 
 
 type_test.cc
-binary_test.cc
+# binary_test.cc

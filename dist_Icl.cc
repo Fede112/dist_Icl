@@ -228,49 +228,40 @@ int main(int argc, char** argv) {
     
     
     stop:
+    
     // PRINT MAP
-    // map<unsigned int, map<unsigned int, unsigned int>::iterator itr_out; 
-    // map<unsigned int, unsigned int>::iterator itr_in; 
-
-
-
-
+    auto outfile = std::fstream("outfile.b", std::ios::out | std::ios::binary);
     const std::size_t lines = 100000;
-    std::size_t bytes;
-    bytes = 3 * sizeof(unsigned int) * lines; // size in Bytes
+    const std::size_t bytes = 3 * sizeof(unsigned int) * lines; // size in Bytes
+    unsigned int *p = new unsigned int[3*lines];
     std::size_t j = 0;
+    std::size_t i = 0;
 
     // cout << "MB: " << bytes / 1024. / 1024. << endl;
-    unsigned int *p = new unsigned int[3*lines];
-
-    auto outfile = std::fstream("outfile.b", std::ios::out | std::ios::binary);
-
 
     // auto myfile = std::fstream("outfile.binary", std::ios::out | std::ios::binary);
     for (auto itr_out = countingmap.cbegin(); itr_out != countingmap.cend(); ++itr_out) { 
-        for (auto itr_in = itr_out->second.cbegin(); itr_in != itr_out->second.cend(); ++itr_in, ++j)
-        {
-            p[j] = itr_out->first;
-            p[j+1] = itr_in->first;
-            p[j+2] = itr_in->second;
+        for (auto itr_in = itr_out->second.cbegin(); itr_in != itr_out->second.cend(); ++itr_in, ++j, ++i)
+        {   
+            p[3*j] = itr_out->first;
+            p[3*j+1] = itr_in->first;
+            p[3*j+2] = itr_in->second;
             if(j == lines-1)
             {
                 outfile.write((char*)p, bytes);
-                j = 0;
+                j = -1; // so that j starts from 0 in the next iteration
             }
-        }
             // cout << itr_out->first << ' ' << itr_in->first << ' ' << itr_in->second << '\n'; 
+        }   
     } 
+    outfile.write((char*)p, 3*sizeof(unsigned int)*j);
 
+
+    delete[] p;
     outfile.close();
     infile1.close();
     infile2.close();
 
-    //int ndata;
-    //ndata=vec.size();
-    //cout << ndata << endl;
-
-    //for(int i=0; i<vec.size();++i) cout  << vec[i].qID << " " << vec[i].sID << " " << vec[i].cl_idrel << endl;
     
     tend = time(NULL); 
     time_taken=difftime(tend, tstart);
