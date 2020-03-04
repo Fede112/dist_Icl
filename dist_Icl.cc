@@ -10,8 +10,6 @@
 #include <iomanip>   
 using namespace std;
 
-#include "fmt/format.h"
-
 
 
 // Small Clustered Alignment structure (only essential data...)
@@ -203,27 +201,14 @@ int main(int argc, char** argv) {
                     // if(vecA[i].qID<=vecB[j].qID) tmps <<  vecA[i].qID << "_" << vecA[i].center << " " << vecB[j].qID << "_" << vecB[j].center << " ";
                     // else tmps <<  vecB[j].qID << "_" << vecB[j].center << " " << vecA[i].qID << "_" << vecA[i].center << " ";
                     
-
                         if(vecA[i].qID<=vecB[j].qID)
                         {
-                            // couple_id = fmt::format("The answer is {}.", 22);
-                            // couple_id = fmt::format("{}_{} {}_{} ", vecA[i].qID, vecB[j].qID);
                             ++countingmap[ vecA[i].qID ][ vecB[j].qID ];                            
                         } 
                         else
                         {
-                            // couple_id = fmt::format("The answer is {}.", 42);
-                            // couple_id = fmt::format("{}_{} {}_{} ", vecB[j].qID, vecA[i].qID);
                             ++countingmap[ vecB[j].qID ][ vecA[i].qID ];                            
                         } 
-
-
-
-                    // couple_id = tmps.str();
-
-
-                    // ++countingmap[couple_id];
-                          
                     }   
                 }
             }
