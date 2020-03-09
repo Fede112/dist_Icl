@@ -2,29 +2,46 @@
 #include <vector>
 #include <iostream>
 
+// Small Clustered Alignment structure (only essential data...)
+struct SmallCA
+{
+    unsigned int qID;
+    unsigned int sID;
+    unsigned short sstart;
+    unsigned short send;
+    
+    SmallCA(unsigned int q, unsigned int s, unsigned short ss, unsigned short se): qID(q), sID(s), sstart(ss), send (se) {}
+
+};
+
+
+//print a ClusteredAlignment TO STDOUT
+void printSCA( SmallCA SCA) {
+
+    std::cout << SCA.qID << " " << SCA.sID << " " << SCA.sstart << " " << SCA.send << std::endl;
+    
+}
 
 
 
 int main()
 {
-    const std::size_t kB = 1024;
-    const std::size_t MB = 1024 * kB;
-    const std::size_t GB = 1024 * MB;
-
-    // for (std::size_t size = 1 * MB; size <= 2 * GB; size *= 2) std::cout << "option1, " << size / MB << "MB: " << option_1(size) << "ms" << std::endl;
-    // for (std::size_t size = 1 * MB; size <= 2 * GB; size *= 2) std::cout << "option2, " << size / MB << "MB: " << option_2(size) << "ms" << std::endl;
-    // for (std::size_t size = 1 * MB; size <= 2 * GB; size *= 2) std::cout << "option3, " << size / MB << "MB: " << option_3(size) << "ms" << std::endl;
 
 
-  std::ifstream infile ("out.bin", std::ifstream::binary);
+
+
+
+  std::ifstream infile ("./data/BIG2_10e7.bin", std::ifstream::binary);
   if (infile) {
     // get length of file:
     infile.seekg (0, infile.end);
-    unsigned int length = infile.tellg();
+    unsigned long int length = infile.tellg();
     infile.seekg (0, infile.beg);
 
     char * buffer = new char [length];
-    unsigned int * p;
+    unsigned int * p = (unsigned int*)buffer;
+    unsigned short * pos = (unsigned short*)buffer;
+    SmallCA * sca = (SmallCA*)buffer;
     std::cerr << "Reading " << length << " characters... ";
     // read data as a block:
     infile.read (buffer,length);
@@ -34,12 +51,16 @@ int main()
     else
       std::cout << "error: only " << infile.gcount() << " could be read";
     infile.close();
+    unsigned long int bytes_line = 2*sizeof(unsigned int) + 2*sizeof(unsigned short);
 
-    p = (unsigned int*)buffer;
 
-    for (int i = 0; i < length/4/4; ++i)
+    for (int i = 0; i < length/(bytes_line); ++i)
     {
-        std::cout << p[i*4] << ' ' << p[i*4+1] << ' ' << p[i*4+2] << ' ' << p[i*4+3] <<'\n';    
+        // pointer arithmetic depends on the pointer type: 3 unsigned int per line || 6 unsigned short per line.
+        std::cout << p[3*i] << ' ' << p[3*i + 1] << ' ' << pos[6*i + 4] << ' ' << pos[6*i + 4 + 1] <<'\n';    
+        // printSCA(sca[i]);
+
+
     }
     
 
