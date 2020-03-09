@@ -3,4 +3,11 @@
 *.x
 outfile*
 ./data/
+*.bin
+*.b
+
+
+# test files
 type_test.cc
+binary_test.cc
+
