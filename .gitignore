@@ -4,7 +4,7 @@
 outfile*
 ./data/
 *.b
-
+*.bin
 
 type_test.cc
 # binary_test.cc
