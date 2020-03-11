@@ -1,39 +1,30 @@
 # -*- Makefile -*-
 SHELL=/bin/sh
 
-CC=g++
-# CFLAGS= -Wall -Wextra -O3 -ffast-math -fexpensive-optimizations -msse3 -lmft
-CFLAGS= -O3
-LDFLAGS= -lfmt
+CXX=g++
+# CFLAGS= -Wall -Wextra -O3 -ffast-math -fexpensive-optimizations -msse3 
+CXXFLAGS= -O3 -std=c++11 -I ./include/# -Wall
+LDFLAGS= # -lfmt
 DEBUG= -g -ggdb
 
-EXE = dist_Icl.x
-OBJS = dist_Icl.o	
 
+SRC=dist_Icl.cc txt2binary.cc binary2txt.cc
+EXE=$(SRC:.cc=.x)
 
 default:$(EXE)
 
-# $(EXE): $(OBJS)
-$(EXE): dist_Icl.o 
-	$(CC) $^ -o $@  $(LDFLAGS)
-	@rm $^
 
-%.o: %.cc
-	$(CC) -c $< -o $@  $(CFLAGS) 
+%.x:%.cc
+	$(CXX) $(CXXFLAGS) $< -o $@
 
 
+clean:
+	rm -rf *~ $(EXE) *.x outfile
 
 
 run:$(EXE)
 	./$(EXE) ./data/BIG1_map2.clean  ./data/BIG2_map2.clean 0 0.02
 # this is a minimsl run (parameter 0.01 means 0.01 hours) that starts from the recovery id 0 (i.e. from the very beginnig of the file)
-
-clean:
-	rm -rf *~ $(EXE) *.x outfile $(OBJS)
-
-
-
-
 
 
 

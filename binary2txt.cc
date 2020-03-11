@@ -1,6 +1,7 @@
 #include <fstream>
 #include <vector>
 #include <iostream>
+#include "cxxopts.hpp"
 
 // Small Clustered Alignment structure (only essential data...)
 struct SmallCA
@@ -24,33 +25,72 @@ void printSCA( SmallCA SCA) {
 
 
 
-int main()
+int main(int argc, char** argv)
 {
 
 
+    ////////////////////////////////////////////////////////////////////////
+    // Args parser (I tried a new library but I am not convinced)
+
+    cxxopts::Options options("txt2binary", 
+        "Reads dist_Icl binary input file and outputs it to terminal.\n\n"
+        "Output has 4 columns q*100+c, s, ss, se.\n");
+
+    std::string input;
+    options.add_options()
+        ("h,help", "Print usage")
+        ("i,input", "Input file path", cxxopts::value<std::string>())
+    ;
+
+    
+    auto args = options.parse(argc, argv);
 
 
-
-  std::ifstream infile ("./data/BIG2_10e7.bin", std::ifstream::binary);
-  if (infile) {
-    // get length of file:
-    infile.seekg (0, infile.end);
-    unsigned long int length = infile.tellg();
-    infile.seekg (0, infile.beg);
-
-    char * buffer = new char [length];
-    unsigned int * p = (unsigned int*)buffer;
-    unsigned short * pos = (unsigned short*)buffer;
-    SmallCA * sca = (SmallCA*)buffer;
-    std::cerr << "Reading " << length << " characters... ";
-    // read data as a block:
-    infile.read (buffer,length);
-
-    if (infile)
-      std::cerr << "all characters read successfully. \n";
+    if (args.count("help"))
+    {
+      std::cout << options.help() << std::endl;
+      exit(0);
+    }
+    if (args.count("input")==1)
+        input = args["input"].as<std::string>();
     else
+    {
+        std::cout << "Missing input flag: -i <filepath>" << std::endl;
+        exit(1);
+    }
+    ////////////////////////////////////////////////////////////////////////
+
+
+    
+    std::ifstream infile (input, std::ifstream::binary);
+    unsigned long int length = 0;
+    char * buffer;
+    unsigned int * p;
+    unsigned short * pos ;
+    SmallCA * sca;
+    if (infile) 
+    {
+        // get length of file:
+        std::cerr << "all characters read successfully. \n";
+        infile.seekg (0, infile.end);
+        length = infile.tellg();
+        infile.seekg (0, infile.beg);
+
+        buffer = new char [length];
+        p = (unsigned int*) buffer;
+        pos = (unsigned short*) buffer;
+        sca = (SmallCA*) buffer;
+        
+        std::cerr << "Reading " << length << " characters... ";
+        // read data as a block:
+        infile.read (buffer,length);
+    }
+    else
+    {
       std::cout << "error: only " << infile.gcount() << " could be read";
+    }
     infile.close();
+    
     unsigned long int bytes_line = 2*sizeof(unsigned int) + 2*sizeof(unsigned short);
 
 
@@ -65,7 +105,6 @@ int main()
     
 
     delete[] buffer;
-  }
 
   return 0;
 }
