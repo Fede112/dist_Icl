@@ -49,13 +49,14 @@ double dist(SmallCA i, SmallCA j){
 //read the line of an (OPENED) ifstream *file* into a ClusteredAlignment *ca*
 int linetoSCA(ifstream& fileptr, SmallCA &SCA){
     // int is 4 bytes. long int is already 8 bytes
-    unsigned int q, s, ss, se;
+    unsigned int q, c, s, ss, se;
 
     string line;
     if(getline(fileptr, line)){
     istringstream iss(line); // make fileline into stream
     //read from stream
-    iss >> q >> s >> ss >> se;
+    iss >> q >> c >> s >> ss >> se;
+    q = q*100 + c;
     //put in alignment B
         SCA=SmallCA(q, s, ss, se);
         return 0;}
