@@ -16,7 +16,7 @@ struct SmallCA
 
 
 //print a ClusteredAlignment TO STDOUT
-void printSCA( SmallCA SCA) {
+void printSCA( const SmallCA & SCA) {
 
     std::cout << SCA.qID << " " << SCA.sID << " " << SCA.sstart << " " << SCA.send << std::endl;
     

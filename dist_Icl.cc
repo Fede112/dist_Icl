@@ -157,7 +157,6 @@ int main(int argc, char** argv) {
         //se = allora "pappappero"
         if(alB->sID == alA->sID) 
         {
-            // cout << "In if" << endl;
             s0 = alA->sID;
             const SmallCA * init_subA = alA;
             const SmallCA * init_subB = alB;
@@ -181,6 +180,13 @@ int main(int argc, char** argv) {
                 {
                     if( dist(pA,pB) < 0.2 ) 
                     {
+                        if (pB->qID == 1000365600)
+                        {
+                            std::cout << std::endl;
+                            printSCA(*pB);
+                            printSCA(*pA);
+                        } 
+
                         if(pA->qID<=pB->qID)
                         {
                             ++countingmap[ pA->qID ][ pB->qID ];                            

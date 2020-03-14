@@ -14,7 +14,7 @@ int main(int argc, char** argv)
     ////////////////////////////////////////////////////////////////////////
     // Args parser (I tried a new library but I am not convinced)
 
-    cxxopts::Options options("Input two binary", 
+    cxxopts::Options options("dist_Icl input two binary", 
         "Converts dist_Icl txt input file into binary format.\n\n"
         "Input file has 5 columns: q, c, s, ss, se \n"
         "Output file has 4 columns q*100+c, s, ss, se.\n");
