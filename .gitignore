@@ -2,5 +2,6 @@
 *.clean
 *.x
 outfile*
-./data/
+data/
 type_test.cc
+*.txt

@@ -34,7 +34,7 @@ double dist(SmallCA i, SmallCA j){
     unsigned int istart, iend, jstart, jend;
     istart= i.sstart; iend= i.send; jstart=j.sstart; jend=j.send;
     //calculate intersection
-    inte=0;
+    inte=0.0;
     hi=min(iend,jend);
     lo=max(istart,jstart);
     if(hi>lo) inte=hi-lo;
@@ -46,30 +46,38 @@ double dist(SmallCA i, SmallCA j){
 }
 
 
-//read the line of an (OPENED) ifstream *file* into a ClusteredAlignment *ca*
-int linetoSCA(ifstream& fileptr, SmallCA &SCA){
-    // int is 4 bytes. long int is already 8 bytes
-    unsigned int q, s, ss, se;
+//print a ClusteredAlignment TO STDOUT
+void printSCA( SmallCA SCA) {
 
-    string line;
-    if(getline(fileptr, line)){
-    istringstream iss(line); // make fileline into stream
-    //read from stream
-    iss >> q >> s >> ss >> se;
-    //put in alignment B
+    cerr << SCA.qID << " " << SCA.sID << " " << SCA.sstart << " " << SCA.send << endl;
+    
+}
+
+
+//read the line of an (OPENED) ifstream *file* into a ClusteredAlignment *ca*
+int linetoSCA(ifstream& fileptr, SmallCA &SCA)
+    {
+        // int is 4 bytes. long int is already 8 bytes
+        unsigned int q, c, s, ss, se;
+
+        string line;
+        if(getline(fileptr, line)){
+        istringstream iss(line); // make fileline into stream
+        //read from stream
+        iss >> q >> c >> s >> ss >> se;
+
+        q = q*100+c;
+        //put in alignment B
         SCA=SmallCA(q, s, ss, se);
-        return 0;}
+        
+
+        return 0;
+    }
     else if (fileptr.eof() ) return -1; //END OF FILE
     else return 1; // ERROR
 }
 
 
-//print a ClusteredAlignment TO STDOUT
-void printSCA( SmallCA SCA) {
-
-    cout << SCA.qID << " " << SCA.sID << " " << SCA.sstart << " " << SCA.send << endl;
-    
-}
 
 
 
@@ -130,19 +138,17 @@ int main(int argc, char** argv) {
     Afile = &infile1;
     Bfile = &infile2;
 
+    checkA=linetoSCA(*Afile,alA);
+    checkB=linetoSCA(*Bfile,alB);
+    if(checkA<0 || checkB<0){cerr << "(1)ERROR: one of the two files has no lines." << endl; return 1;}
+    if(checkA>0 || checkB>0){cerr << "(2)ERROR: one of the two files cannot be read." << endl; return 2;}
+    
     //scroll till the recovery checkpoint (both files A and B)
     while(alB.sID<=recovery){
     checkB=linetoSCA(*Bfile,alB); if(checkB<0) break; else if(checkB>0){cerr << "(0)ERROR: one of the two files (B) cannot be read." << endl; return 2;} }
     while(alA.sID<=recovery){
     checkA=linetoSCA(*Afile,alA); if(checkA<0) break; else if(checkA>0){cerr << "(0)ERROR: one of the two files (A) cannot be read." << endl; return 2;} }
 
-
-    
-    checkA=linetoSCA(*Afile,alA);
-    checkB=linetoSCA(*Bfile,alB);
-    if(checkA<0 || checkB<0){cerr << "(1)ERROR: one of the two files has no lines." << endl; return 1;}
-    if(checkA>0 || checkB>0){cerr << "(2)ERROR: one of the two files cannot be read." << endl; return 2;}
-    
     
     //determine the main file
     if(alB.sID>alA.sID){ swap(alA,alB); swap(Afile,Bfile);  }
@@ -157,12 +163,13 @@ int main(int argc, char** argv) {
             else if(checkB>0){cerr << "(3)ERROR: one of the two files cannot be read." << endl; return 2;}
             //cout << "--- "; printCA(alB);
         }
-        
+                
         //se > allora cambia
         if(alB.sID>alA.sID){ swap(alA,alB); swap(Afile,Bfile);  }
         //se = allora "pappappero"
         else if(alB.sID==alA.sID) 
         {
+            
             s0 = alA.sID;
             //cout << "MATCH FOUND" << endl;
             //crea il vettore dove metterò tutti quelli con la stessa sID (1 x file)
@@ -195,6 +202,11 @@ int main(int argc, char** argv) {
                     if( dist(vecA[i],vecB[j]) < 0.2 ) 
                     {
 
+                        // if (vecA[i].qID == 44166500 || vecB[j].qID == 44166500)
+                        // {
+                        //     printSCA(vecA[i]);
+                        //     printSCA(vecB[j]);
+                        // }
                     // string couple_id;
                     // stringstream tmps;
 
