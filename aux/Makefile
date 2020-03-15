@@ -16,10 +16,10 @@ default: $(EXE)
 %.x:%.cc
 	$(CXX) $(CXXFLAGS) $< -o $@
 
-debug: CXXFLAGS += $(DEBUG)
-debug: default
-debug: 
-	valgrind ./${EXE}
+# debug: CXXFLAGS += $(DEBUG)
+# debug: default
+# debug: 
+# 	valgrind ./${EXE}
 
 clean:
 	rm -rf *~ $(EXE)

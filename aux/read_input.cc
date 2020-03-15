@@ -48,7 +48,7 @@ int main(int argc, char** argv)
     char * buffer = NULL;
     // unsigned int * p;
     // unsigned short * pos ;
-    SmallCA * sca;
+    SmallCA * sca = NULL;
     if (infile) 
     {
         // get length of file:

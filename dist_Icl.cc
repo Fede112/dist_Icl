@@ -109,36 +109,22 @@ int main(int argc, char** argv) {
     
     SmallCA * alA = (SmallCA *) bufferA;  //pointer to SmallCA to identify bufferA, i.e. the main file
     SmallCA * alB = (SmallCA *) bufferB; //pointer to SmallCA to bufferB, secondary file
-    // Afile
-    // Bfile
-
-    
-    unsigned int s0=0;
-    
-    // SmallCA alA(0, 0, 0, 0);
-    // SmallCA alB(0, 0, 0, 0);
-    // support variables for reading files
-    
-    
-    //scroll till the recovery checkpoint (both files A and B)
-    // while(alB.sID<=recovery){
-    // checkB=linetoSCA(*Bfile,alB); if(checkB<0) break; else if(checkB>0){cerr << "(0)ERROR: one of the two files (B) cannot be read." << endl; return 2;} }
-    // while(alA.sID<=recovery){
-    // checkA=linetoSCA(*Afile,alA); if(checkA<0) break; else if(checkA>0){cerr << "(0)ERROR: one of the two files (A) cannot be read." << endl; return 2;} }
 
 
-    
-    // checkA=linetoSCA(*Afile,alA);
-    // checkB=linetoSCA(*Bfile,alB);
-    // if(checkA<0 || checkB<0){cerr << "(1)ERROR: one of the two files has no lines." << endl; return 1;}
-    // if(checkA>0 || checkB>0){cerr << "(2)ERROR: one of the two files cannot be read." << endl; return 2;}
-    
-    
-    
     //scorri il file B finché O non c'è un match O scavalchi il valore che comanda (sidA>=sidB)
+    unsigned int s0{0};
     unsigned long int posA{0}, posB{0};
     unsigned long int linesA = bytesA/sizeof(SmallCA);
     unsigned long int linesB = bytesB/sizeof(SmallCA);
+
+        
+    //scroll till the recovery checkpoint (both files A and B)
+    while(posB<linesB && alB->sID<=recovery){++alB; ++posB;}
+    while(posA<linesA && alA->sID<=recovery){++alA; ++posA;}
+
+    printSCA(*alB);
+    printSCA(*alA);
+    getchar();
 
     while(posA<linesA && posB<linesB)
     {
@@ -180,12 +166,6 @@ int main(int argc, char** argv) {
                 {
                     if( dist(pA,pB) < 0.2 ) 
                     {
-                        if (pB->qID == 1000365600)
-                        {
-                            std::cout << std::endl;
-                            printSCA(*pB);
-                            printSCA(*pA);
-                        } 
 
                         if(pA->qID<=pB->qID)
                         {
@@ -208,11 +188,7 @@ int main(int argc, char** argv) {
         time_taken=difftime(tend, tstart)/3600.;
         if(time_taken>max_hours)  {cerr<< "\n ---- RECOVERY_ID "<< s0 << " time_taken " << time_taken << endl; goto stop;}
     }
-
-    cout << posA << '\t' << posB << endl;
-    
-    cerr << "Write map" << endl;
-    
+       
     stop:
     
     // PRINT MAP
@@ -222,15 +198,13 @@ int main(int argc, char** argv) {
     unsigned int *p = new unsigned int[3*lines];
     std::size_t j = 0;
     std::size_t i = 0;
-    std::size_t tot = 0;
-
-    // cout << "MB: " << bytes / 1024. / 1024. << endl;
+    // std::size_t tot = 0;
 
     // auto myfile = std::fstream("outfile.binary", std::ios::out | std::ios::binary);
     for (auto itr_out = countingmap.cbegin(); itr_out != countingmap.cend(); ++itr_out) { 
         for (auto itr_in = itr_out->second.cbegin(); itr_in != itr_out->second.cend(); ++itr_in, ++j, ++i)
         {   
-            ++tot;
+            // ++tot;
             p[3*j] = itr_out->first;
             p[3*j+1] = itr_in->first;
             p[3*j+2] = itr_in->second;
@@ -239,12 +213,11 @@ int main(int argc, char** argv) {
                 outfile.write((char*)p, bytes);
                 j = -1; // so that j starts from 0 in the next iteration
             }
-            // cout << itr_out->first << ' ' << itr_in->first << ' ' << itr_in->second << '\n'; 
         }   
     } 
     outfile.write((char*)p, 3*sizeof(unsigned int)*j);
 
-    cerr << tot << endl;
+    // cerr << tot << endl;
     delete[] p;
     delete[] bufferA;
     delete[] bufferB;
