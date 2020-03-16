@@ -122,9 +122,6 @@ int main(int argc, char** argv) {
     while(posB<linesB && alB->sID<=recovery){++alB; ++posB;}
     while(posA<linesA && alA->sID<=recovery){++alA; ++posA;}
 
-    printSCA(*alB);
-    printSCA(*alA);
-    getchar();
 
     while(posA<linesA && posB<linesB)
     {
