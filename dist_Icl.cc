@@ -223,7 +223,7 @@ int main(int argc, char** argv) {
     
     tend = time(NULL); 
     time_taken=difftime(tend, tstart)/3600.;
-    cerr << "\nTOTAL time_taken " << time_taken << endl; 
+    cerr << "\nTOTAL time_taken " << time_taken << " - max_hours " << max_hours <<  endl; 
     
      
     return 0;
