@@ -41,7 +41,7 @@ double dist(const SmallCA * i, const SmallCA * j){
 /////////////////////////////////   M   A   I   N    //////////////////////////////////////////////////////
 
 
-// USAGE:  ./a.out  input1 input2 recovery maxhours > output
+// USAGE:  ./a.out  input1 input2 recovery maxhours output 
 
 int main(int argc, char** argv) {
 
@@ -189,7 +189,7 @@ int main(int argc, char** argv) {
     stop:
     
     // PRINT MAP
-    auto outfile = std::fstream("outfile.bin", std::ios::out | std::ios::binary);
+    auto outfile = std::fstream(argv[5], std::ios::out | std::ios::binary);
     const std::size_t lines = 100000;
     const std::size_t bytes = 3 * sizeof(unsigned int) * lines; // size in Bytes
     unsigned int *p = new unsigned int[3*lines];
@@ -222,7 +222,7 @@ int main(int argc, char** argv) {
 
     
     tend = time(NULL); 
-    time_taken=difftime(tend, tstart);
+    time_taken=difftime(tend, tstart)/3600.;
     cerr << "\nTOTAL time_taken " << time_taken << endl; 
     
      
