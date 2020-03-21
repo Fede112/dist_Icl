@@ -27,7 +27,7 @@ aux:
 	$(MAKE) $(MFLAGS) -C ./aux/
 
 run:$(EXE)
-	./$(EXE) ./data/BIG1_10e5.bin  ./data/BIG2_10e5.bin 5 0.02
+	./$(EXE) ./data/BIG1_10e5.bin  ./data/BIG2_10e5.bin 0 0.02
 # this is a minimsl run (parameter 0.01 means 0.01 hours) that starts from the recovery id 0 (i.e. from the very beginnig of the file)
 
 
