@@ -1,6 +1,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <pthread.h>
+#include <iostream>
+#include <memory>
 
 #define N 4
 
@@ -24,16 +26,24 @@ void *producer(void *arg)
 
 int main()
 {
-    pthread_t my_thread[N];
+    // pthread_t my_thread[N];
 
-    long id;
-    for(id = 1; id <= N; id++) {
-        int ret =  pthread_create(&my_thread[id], NULL, &worker_thread, (void*)id);
-        if(ret != 0) {
-            printf("Error: pthread_create() failed\n");
-            exit(EXIT_FAILURE);
-        }
-    }
+    // long id;
+    // for(id = 1; id <= N; id++) {
+    //     int ret =  pthread_create(&my_thread[id], NULL, &worker_thread, (void*)id);
+    //     if(ret != 0) {
+    //         printf("Error: pthread_create() failed\n");
+    //         exit(EXIT_FAILURE);
+    //     }
+    // }
 
-    pthread_exit(NULL);
+    // pthread_exit(NULL);
+
+    std::unique_ptr<unsigned int []> write_buffer{new unsigned int [10]};
+    // std::unique_ptr<unsigned int []> write_buffer;
+    // write_buffer.reset(new unsigned int [10]);
+
+    write_buffer[2] = 17;
+    std::cout << write_buffer[2] << std::endl;
+
 }

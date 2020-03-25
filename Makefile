@@ -21,7 +21,7 @@ default: $(EXE)
 
 clean:
 	rm -rf *~ $(EXE)
-	$(MAKE) $(MFLAGS) clean  -C ./aux/ 
+	$(MAKE) $(MFLAGS) clean  -C ./aux/ *.x
 
 aux:
 	$(MAKE) $(MFLAGS) -C ./aux/
