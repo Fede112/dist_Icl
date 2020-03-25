@@ -84,19 +84,8 @@ struct Queue
                             
     Queue():index(0),fill(0), fidx(0), buffer_size(0){}
     Queue(unsigned int i, unsigned int f, unsigned int fi, unsigned int bs): 
-    index(i), fill(f), fidx(fi), buffer_size(bs), write_buffer{new unsigned int [bs]}, read_buffer{new unsigned int [bs]}
-    {
-        // write_buffer.reset(new unsigned int [bs]);
-        // read_buffer.reset(new unsigned int [bs]);
-        // std::cout << write_buffer[0] << std::endl;
-        // pb[0] = buffer.get();
-        // pb[1] = buffer.get() + buffer_size/2;
-    }
+    index(i), fill(f), fidx(fi), buffer_size(bs), write_buffer{new unsigned int [bs]}, read_buffer{new unsigned int [bs]}{};
 
-};
-
-// sem_t empty;
-// sem_t full;
 
 void *producer(void *qs) 
 {
@@ -229,12 +218,7 @@ void *consumer(void *q)
         // read entire buffer
         for (int i = 0; i < queue->fill; i=i+2)
         {
-            // std::cerr << queue->read_buffer[i] << std::endl;
-            // std::cerr << queue->read_buffer[i+1] << std::endl;
             ++vec_maps[queue->index][ queue->read_buffer[i] ][ queue->read_buffer[i+1] ];
-            // vec_maps[queue->index]
-            // pthread_exit(NULL);
-            // ++countingmap[ queue->read_buffer[i] ][ queue->read_buffer[i+1] ];
         }
 
         // sem_post write
@@ -252,17 +236,6 @@ void *consumer(void *q)
 
     }
 
-    // int i;
-    // for (i = 0; i < loops; i++) 
-    // {
-    //     sem_wait(&full); 
-    //     sem_wait(&mutex); 
-    //     int tmp = get();
-    //     sem_post(&mutex);
-    //     sem_post(&empty);
-
-    //     printf("%d\n", tmp);
-    // }
 }
 
 
@@ -358,11 +331,11 @@ int main(int argc, char** argv) {
         queues[i] = Queue(i,0,0,BUFFER_SIZE);
     }
     
-    // Producer
+    // Create Producer
     pthread_t tprod;
     pthread_create(&tprod, NULL, producer, &queues);
     
-    // Create and initialize consumer threads
+    // Create and initialize Consumer threads
     pthread_t tids[CONSUMER_THREADS];
     for (int i = 0; i < CONSUMER_THREADS; ++i)
     {
@@ -379,38 +352,8 @@ int main(int argc, char** argv) {
     {
         pthread_join(tids[i], NULL);    
     }
-    // Queue *queue = new Queue[CONSUMER_THREADS];
-    // Queue queue[CONSUMER_THREADS];
-
-    // for(Queue &queue : queues)
-    // {
-    //     queue = Queue(0,0,BUFFER_SIZE);
-    // }
-    // exit(0);
-    // Consumer
-
-
-    // auto t1_consumer = std::chrono::high_resolution_clock::now();   
-    // for (int i = 0; i < 39045799; ++i)
-    // {
-    //     // ++countingmap[ prod_buffer[2*i] ][ prod_buffer[2*i+1] ];
-    // }
-    // auto t2_consumer = std::chrono::high_resolution_clock::now();   
-
-    // int consumer_seconds;
     
-    // consumer_seconds = std::chrono::duration_cast<std::chrono::seconds>
-    //                          (t2_consumer-t1_consumer).count();
-
-    // cerr << "consumer time: " << consumer_seconds << endl;
     
-
-
-
-
-
-
-
 
     // PRINT MAP
     std::cout << "Writing to output: " << std::endl;
