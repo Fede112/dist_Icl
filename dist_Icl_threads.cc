@@ -184,7 +184,8 @@ void *producer(void *qs)
                             for (int i = 0; i < CONSUMER_THREADS; ++i)
                             {
                                 queues[i].write_buffer.swap(queues[i].read_buffer);
-                                cerr << queues[i].index << " buffer: "<< (double)queues[i].fidx/BUFFER_SIZE << endl;
+                                cerr << (double)queues[i].fidx/BUFFER_SIZE << " ";
+				if(i==CONSUMER_THREADS) cerr << endl;
                                 queues[i].fill = queues[i].fidx;
                                 queues[i].fidx = 0;
                             }
