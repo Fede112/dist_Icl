@@ -10,7 +10,6 @@
 #include <chrono>
 #include <iomanip>  
 
-// #include <iterator>
 #include <memory>
 #include <pthread.h>
 #include <semaphore.h>
@@ -18,16 +17,38 @@
 #include "smallca.hpp"
 
 // size of production buffer* bufferA{NULL}s per thread
-#define BUFFER_SIZE 500000000
+#define BUFFER_SIZE 6000000
 #define CONSUMER_THREADS 3
+#define MAX_qID 2353198020
 // Max qID = 23531980-20 - for 2 threads = 1176599010
-#define qID_PER_THREAD 784399340
-
+// #define qID_PER_THREAD 588299505
+#define qID_PER_THREAD 500000000
+// 588299505
 
 using namespace std;
 
 typedef std::map<unsigned int, std::map<unsigned int,unsigned int> >  map2_t;
 
+//---------------------------------------------------------------------------------------------------------
+// GLOBAL VARIABLES
+//---------------------------------------------------------------------------------------------------------
+
+char * bufferA{NULL}, * bufferB{NULL};
+unsigned int linesA{0}, linesB{0};
+
+// Semaphores (TODO: cleaner implementation with CV)
+std::array<sem_t, CONSUMER_THREADS> sem_write;
+std::array<sem_t, CONSUMER_THREADS> sem_read;
+
+// global flag to terminate consumers
+unsigned int done{0};
+pthread_mutex_t done_lock = PTHREAD_MUTEX_INITIALIZER;
+
+// array of map2_t for consumers
+std::vector<map2_t> vec_maps(CONSUMER_THREADS);
+
+// qIDs_partition array for a balanced load among threads. You need (n-1) points to generate n partitions.
+std::array <unsigned int, CONSUMER_THREADS-1> qIDs_partition{0}; 
 
 //---------------------------------------------------------------------------------------------------------
 // ALIGNMENTS DISTANCE on the SEARCH
@@ -53,20 +74,6 @@ double dist(const SmallCA * i, const SmallCA * j){
 // THREADS METHODS
 //---------------------------------------------------------------------------------------------------------
 
-char * bufferA{NULL}, * bufferB{NULL};
-unsigned int linesA{0}, linesB{0};
-
-// Semaphores (TODO: cleaner implementation with CV)
-std::array<sem_t, CONSUMER_THREADS> sem_write;
-std::array<sem_t, CONSUMER_THREADS> sem_read;
-
-// global flag to terminate consumers
-unsigned int done{0};
-pthread_mutex_t done_lock = PTHREAD_MUTEX_INITIALIZER;
-
-// array of map2_t for consumers
-std::vector<map2_t> vec_maps(CONSUMER_THREADS);
-
 
 // Struct to pass to pthread functions
 struct Queue
@@ -75,22 +82,35 @@ struct Queue
     unsigned int fill;
     unsigned int fidx;
     unsigned int buffer_size;
-    // using unique ptr to buffer plus additional pointers to move within the buffer. Good implementation?
-    // std::unique_ptr<unsigned int []> write_buffer{new unsigned int [10]};
-    // std::unique_ptr<unsigned int []> read_buffer{new unsigned int [10]};
+    // using unique ptr to buffer. Good implementation?
     std::unique_ptr<unsigned int []> write_buffer;
     std::unique_ptr<unsigned int []> read_buffer;
     
                             
     Queue():index(0),fill(0), fidx(0), buffer_size(0){}
     Queue(unsigned int i, unsigned int f, unsigned int fi, unsigned int bs): 
-    index(i), fill(f), fidx(fi), buffer_size(bs), write_buffer{new unsigned int [bs]}, read_buffer{new unsigned int [bs]}{};
+    index(i), fill(f), fidx(fi), buffer_size(bs), write_buffer{new unsigned int [bs]}, read_buffer{new unsigned int [bs]}
+    {}
+
+};
+
+void balanced_partition(std::array <unsigned int, CONSUMER_THREADS - 1> & array)
+// calculate the qIDs to equally distribute the pairs qID1-qID2 in each thread.
+// It is an analytical expression based on the probability of finding a pair qID1-qID2, where qID1<qID2 always 
+{
+    for (int i = 1; i < CONSUMER_THREADS; ++i)
+    {
+        array[i-1] = MAX_qID*(    1 - sqrt( 1 - i*((MAX_qID-1.)/(MAX_qID*CONSUMER_THREADS)) )  );
+    }
+    return;
+}
+
 
 
 void *producer(void *qs) 
 {
     Queue *queues = (Queue*) qs;
-    std::cerr << "Hi from producer thread!" << std::endl;
+    std::cerr << "Hi from producer thread " << std::endl;
     
 
     SmallCA * alA = (SmallCA *) bufferA;  //pointer to SmallCA to identify bufferA, i.e. the main file
@@ -101,7 +121,6 @@ void *producer(void *qs)
 
     while(posA<linesA && posB<linesB)
     {
-        // std::cout << posA << '\t'<< posB << std::endl;
         while(posB<linesB && alB->sID<alA->sID)
         {
             ++alB;
@@ -141,10 +160,18 @@ void *producer(void *qs)
 
                         auto qID1 = min(pA->qID, pB->qID);
                         auto qID2 = max(pA->qID, pB->qID);
-                        auto tidx = qID1/qID_PER_THREAD; // hash function
-                        // auto fill = queues[tidx].fill;
-
-                        
+            
+                        // decide to which queue the pair goes
+                        int tidx = CONSUMER_THREADS - 1;
+                        for (int i = 1; i < CONSUMER_THREADS; ++i)
+                        {
+                            if(qID1 < qIDs_partition[i-1])
+                            {
+                                tidx = i-1;
+                                break;
+                            }
+                        }
+                                               
                         if (queues[tidx].fidx  + 1 < queues[tidx].buffer_size)
                         {
                             queues[tidx].write_buffer[queues[tidx].fidx] = qID1;
@@ -153,9 +180,7 @@ void *producer(void *qs)
                         }
                         else
                         {
-
-                            // cerr << "Producer: entre al swap por el buffer " << tidx << "con " << queues[tidx].fidx << endl; 
-                            // cerr << qID1 << '\t' << qID_PER_THREAD << endl;
+                            // cerr << "Producer: swapping " << tidx << " with " << queues[tidx].fidx << endl; 
                             // wait
                             for(sem_t &sw : sem_write){sem_wait(&sw);}
 
@@ -163,7 +188,7 @@ void *producer(void *qs)
                             for (int i = 0; i < CONSUMER_THREADS; ++i)
                             {
                                 queues[i].write_buffer.swap(queues[i].read_buffer);
-                                // cerr << queues[i].index << " buffer: "<< queues[i].fidx << endl;
+                                cerr << queues[i].index << " buffer: "<< queues[i].fidx << endl;
                                 queues[i].fill = queues[i].fidx;
                                 queues[i].fidx = 0;
                             }
@@ -179,7 +204,6 @@ void *producer(void *qs)
                 }
             }            
         }   
-        // if(time_taken>max_hours)  {cerr<< "\n ---- RECOVERY_ID "<< s0 << " time_taken " << time_taken << endl; goto stop;}
     }
 
     // wait
@@ -189,6 +213,7 @@ void *producer(void *qs)
     for (int i = 0; i < CONSUMER_THREADS; ++i)
     {
         queues[i].write_buffer.swap(queues[i].read_buffer);
+        cerr << queues[i].index << " buffer: "<< queues[i].fidx << endl;
         queues[i].fill = queues[i].fidx;
         queues[i].fidx = 0;
     }
@@ -200,7 +225,6 @@ void *producer(void *qs)
     pthread_mutex_unlock(&done_lock);
     pthread_exit(NULL);
 
-    // stop:
 }
 
 void *consumer(void *q) 
@@ -213,10 +237,8 @@ void *consumer(void *q)
         // wait for sem_read
         sem_wait(&sem_read[queue->index]);
 
-        // pthread_exit(NULL);
-
         // read entire buffer
-        for (int i = 0; i < queue->fill; i=i+2)
+        for (unsigned int i = 0; i < queue->fill; i=i+2)
         {
             ++vec_maps[queue->index][ queue->read_buffer[i] ][ queue->read_buffer[i+1] ];
         }
@@ -225,7 +247,7 @@ void *consumer(void *q)
         sem_post(&sem_write[queue->index]);
 
 
-        // Exit routine
+        // exit routine condition
         pthread_mutex_lock(&done_lock);
         if (done == 1)
         {
@@ -320,9 +342,6 @@ int main(int argc, char** argv) {
     // while(posB<linesB && alB->sID<=recovery){++alB; ++posB;}
     // while(posA<linesA && alA->sID<=recovery){++alA; ++posA;}
 
-    // For measurements
-    // unsigned int * prod_buffer = new unsigned int [78091598];
-    // unsigned long int ipb{0};
     
     // Initialize queues
     std::array<Queue, CONSUMER_THREADS> queues;
@@ -331,29 +350,35 @@ int main(int argc, char** argv) {
         queues[i] = Queue(i,0,0,BUFFER_SIZE);
     }
     
-    // Create Producer
+    // Define qIDs balanced partition per thread
+    balanced_partition(qIDs_partition);
+
+    // Producer thread
     pthread_t tprod;
     pthread_create(&tprod, NULL, producer, &queues);
     
-    // Create and initialize Consumer threads
+    // Consumer threads
     pthread_t tids[CONSUMER_THREADS];
     for (int i = 0; i < CONSUMER_THREADS; ++i)
     {
         // Create attributes
         pthread_attr_t attr;
         pthread_attr_init(&attr);
-        // printf("%lld\n", limit);
         pthread_create(&tids[i], &attr, consumer, &queues[i]);
     } 
 
+    /* Here main thread could do normalization calculation 
+        while cluster distance is calculated in child threads */
 
+
+    // Join threads when finished
     pthread_join(tprod, NULL);    
     for (int i = 0; i < CONSUMER_THREADS; ++i)
     {
         pthread_join(tids[i], NULL);    
     }
     
-    
+
 
     // PRINT MAP
     std::cout << "Writing to output: " << std::endl;
@@ -367,7 +392,6 @@ int main(int argc, char** argv) {
         std::size_t i = 0;
         // std::size_t tot = 0;
 
-        // auto myfile = std::fstream("outfile.binary", std::ios::out | std::ios::binary);
     
         for (auto itr_out = vec_maps[tidx].cbegin(); itr_out != vec_maps[tidx].cend(); ++itr_out) { 
             for (auto itr_in = itr_out->second.cbegin(); itr_in != itr_out->second.cend(); ++itr_in, ++j, ++i)
