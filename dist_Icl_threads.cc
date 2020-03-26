@@ -178,14 +178,21 @@ void *producer(void *qs)
                         {
                             // cerr << "Producer: swapping " << tidx << " with " << queues[tidx].fidx << endl; 
                             // wait
+                            auto t1_producer = std::chrono::high_resolution_clock::now();   
                             for(sem_t &sw : sem_write){sem_wait(&sw);}
+                            auto t2_producer = std::chrono::high_resolution_clock::now();
+
+                            unsigned int producer_waittime;
+                            producer_waittime = std::chrono::duration_cast<std::chrono::milliseconds>
+                                                (t2_producer-t1_producer).count();
+                            cerr << "Producer waiting time: "<< producer_waittime << endl;
 
                             // swap
                             for (int i = 0; i < CONSUMER_THREADS; ++i)
                             {
                                 queues[i].write_buffer.swap(queues[i].read_buffer);
                                 cerr << (double)queues[i].fidx/BUFFER_SIZE << " ";
-				if(i==CONSUMER_THREADS) cerr << endl;
+				                if(i==CONSUMER_THREADS) cerr << endl;
                                 queues[i].fill = queues[i].fidx;
                                 queues[i].fidx = 0;
                             }
