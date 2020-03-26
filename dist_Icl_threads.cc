@@ -18,12 +18,8 @@
 
 // size of production buffer* bufferA{NULL}s per thread
 #define BUFFER_SIZE 6000000
-#define CONSUMER_THREADS 3
+#define CONSUMER_THREADS 3 // doesn't work for 1 CONSUMER THREAD 
 #define MAX_qID 2353198020
-// Max qID = 23531980-20 - for 2 threads = 1176599010
-// #define qID_PER_THREAD 588299505
-#define qID_PER_THREAD 500000000
-// 588299505
 
 using namespace std;
 
@@ -110,7 +106,7 @@ void balanced_partition(std::array <unsigned int, CONSUMER_THREADS - 1> & array)
 void *producer(void *qs) 
 {
     Queue *queues = (Queue*) qs;
-    std::cerr << "Hi from producer thread " << std::endl;
+    // std::cerr << "Hi from producer thread " << std::endl;
     
 
     SmallCA * alA = (SmallCA *) bufferA;  //pointer to SmallCA to identify bufferA, i.e. the main file
@@ -188,10 +184,11 @@ void *producer(void *qs)
                             for (int i = 0; i < CONSUMER_THREADS; ++i)
                             {
                                 queues[i].write_buffer.swap(queues[i].read_buffer);
-                                cerr << queues[i].index << " buffer: "<< queues[i].fidx << endl;
+                                cerr << queues[i].index << " buffer: "<< (double)queues[i].fidx/BUFFER_SIZE << endl;
                                 queues[i].fill = queues[i].fidx;
                                 queues[i].fidx = 0;
                             }
+                            cerr << '\n';
 
                             // add missing element in new buffer
                             queues[tidx].write_buffer[queues[tidx].fidx] = qID1;
@@ -276,12 +273,12 @@ int main(int argc, char** argv) {
     for(sem_t &sr : sem_read){sem_init(&sr, 0, 0);}
 
     //time checking variables
-    double max_hours; max_hours=atof(argv[4]);
+    // double max_hours; max_hours=atof(argv[4]);
     time_t tstart, tend; 
     double time_taken = 0;
 
-    unsigned int recovery = atoi(argv[3]);
-    cerr << "Found recovery point: " << recovery << endl;
+    // unsigned int recovery = atoi(argv[3]);
+    // cerr << "Found recovery point: " << recovery << endl;
    
     
     tstart = time(NULL); 
@@ -423,9 +420,6 @@ int main(int argc, char** argv) {
     
      
     return 0;
-
-
-
 
 }
 
