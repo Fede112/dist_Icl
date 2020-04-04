@@ -7,21 +7,23 @@ CXXFLAGS= -O3 -std=c++11 -I ./include/ -Wall
 LDFLAGS= # -lfmt
 DEBUG= -g -ggdb
 
-
 SRC=dist_Icl.cc 
 EXE=$(SRC:.cc=.x)
-EXE_AUX=$(SRC_AUX:.cc=.x)
+
 
 default: $(EXE)
 
-
 %.x:%.cc
-	$(CXX) $(CXXFLAGS) $< -o $@
+	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
+
+thread: LDFLAGS=-lpthread
+thread: dist_Icl_threads.x
+
 
 
 clean:
-	rm -rf *~ $(EXE)
-	$(MAKE) $(MFLAGS) clean  -C ./aux/ *.x
+	rm -rf *~ *.x
+	$(MAKE) $(MFLAGS) clean  -C ./aux/
 
 aux:
 	$(MAKE) $(MFLAGS) -C ./aux/

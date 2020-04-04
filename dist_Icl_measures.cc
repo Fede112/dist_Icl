@@ -132,8 +132,8 @@ int main(int argc, char** argv) {
     while(posA<linesA && posB<linesB)
     {
         // std::cout << posA << '\t'<< posB << std::endl;
-        while(posB<linesB && alB->sID<alA->sID)
-        {
+        while(posB<linesB && alB->sID<alA->sID
+)        {
             ++alB;
             ++posB;
         }
@@ -169,6 +169,8 @@ int main(int argc, char** argv) {
                 {
                     if( dist(pA,pB) < 0.2 ) 
                     {
+                        printSCA(*pA);
+                        printSCA(*pB);
 
                         if(pA->qID<=pB->qID)
                         {
@@ -227,8 +229,11 @@ int main(int argc, char** argv) {
     std::size_t i = 0;
     // std::size_t tot = 0;
 
+    unsigned int map_count = 0;
+    unsigned int map2_count = 0;
     // auto myfile = std::fstream("outfile.binary", std::ios::out | std::ios::binary);
     for (auto itr_out = countingmap.cbegin(); itr_out != countingmap.cend(); ++itr_out) { 
+        ++map_count;
         for (auto itr_in = itr_out->second.cbegin(); itr_in != itr_out->second.cend(); ++itr_in, ++j, ++i)
         {   
             // ++tot;
@@ -240,10 +245,13 @@ int main(int argc, char** argv) {
                 outfile.write((char*)p, bytes);
                 j = -1; // so that j starts from 0 in the next iteration
             }
+            ++map2_count;
         }   
     } 
     outfile.write((char*)p, 3*sizeof(unsigned int)*j);
 
+
+    cerr << map_count << '\t' << map2_count << endl;
     // cerr << tot << endl;
     outfile.close();
     delete[] p;
