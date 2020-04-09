@@ -3,7 +3,7 @@
 #include <iostream>
 #include "cxxopts.hpp"
 
-#include "smallca.hpp"
+#include "smallca.h"
 #include "cxxopts.hpp"
 
 int main(int argc, char** argv)

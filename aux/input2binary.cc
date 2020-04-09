@@ -55,21 +55,22 @@ int main(int argc, char** argv)
     std::ifstream in(input);
     std::ofstream out(output, std::ios::binary);
 
-    unsigned int q,s;
-    unsigned short * buff = new unsigned short[3];
+    uint32_t q,s;
+    uint16_t * buff = new uint16_t[3];
     string line;
-    unsigned int num_lines=0;
+    uint32_t num_lines=0;
 
-    while (std::getline(in, line)) {
+    while (std::getline(in, line)) 
+    {
         ++num_lines;
         istringstream iss(line); // make fileline into stream
         //read from stream
         iss >> q >> buff[2] >> s >> buff[0] >> buff[1];
         q = q*100 + buff[2];
 
-        out.write((char*)&q, sizeof(unsigned int));
-        out.write((char*)&s, sizeof(unsigned int));
-        out.write((char*)buff, 2 * sizeof(unsigned short));
+        out.write((char*)&q, sizeof(uint32_t));
+        out.write((char*)&s, sizeof(uint32_t));
+        out.write((char*)buff, 2 * sizeof(uint16_t));
 
     }
 

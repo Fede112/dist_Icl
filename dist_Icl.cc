@@ -9,7 +9,7 @@
 #include <time.h>  
 #include <iomanip>  
 
-#include "smallca.hpp"
+#include "smallca.h"
 
 using namespace std;
 

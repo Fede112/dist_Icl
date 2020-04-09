@@ -1,6 +1,7 @@
 *.out.*
 *.clean
 *.x
+*.o
 outfile*
 ./data/
 *.b

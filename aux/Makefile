@@ -22,6 +22,6 @@ default: $(EXE)
 # 	valgrind ./${EXE}
 
 clean:
-	rm -rf *~ *.x
+	rm -rf *~ *.o *.x
 
 .PHONY: default clean

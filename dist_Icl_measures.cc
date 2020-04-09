@@ -10,7 +10,7 @@
 #include <chrono>
 #include <iomanip>  
 
-#include "smallca.hpp"
+#include "smallca.h"
 
 using namespace std;
 

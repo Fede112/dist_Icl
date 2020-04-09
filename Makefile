@@ -3,26 +3,33 @@ SHELL=/bin/sh
 
 CXX=g++
 # CFLAGS= -Wall -Wextra -O3 -ffast-math -fexpensive-optimizations -msse3 
-CXXFLAGS= -O3 -std=c++11 -I ./include/ -Wall
+CXXFLAGS= -O3 -std=c++14 -I ./include/ -Wall
 LDFLAGS= # -lfmt
 DEBUG= -g -ggdb
 
-SRC=dist_Icl.cc 
-EXE=$(SRC:.cc=.x)
 
-
+OBJS=dist_Icl_threads.o src/normalization.o 
+EXE=dist_Icl_threads.x
 default: $(EXE)
 
-%.x:%.cc
-	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
 
+
+# thread: 
+thread:	OBJS=dist_Icl_threads.o src/normalization.o 
 thread: LDFLAGS=-lpthread
 thread: dist_Icl_threads.x
 
+dist_Icl_threads.o: include/normalization.h
+
+$(EXE): $(OBJS)
+	$(CXX) $^ -o $@  $(LDFLAGS)
+
+%.o: %.cc
+	$(CXX) -c $< -o $@  $(CXXFLAGS) 
 
 
 clean:
-	rm -rf *~ *.x
+	rm -rf *~ $(OBJS) *.x
 	$(MAKE) $(MFLAGS) clean  -C ./aux/
 
 aux:

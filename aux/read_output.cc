@@ -2,7 +2,7 @@
 #include <vector>
 #include <iostream>
 
-#include "smallca.hpp"
+#include "smallca.h"
 #include "cxxopts.hpp"
 
 int main(int argc, char** argv)
@@ -45,7 +45,8 @@ int main(int argc, char** argv)
     std::ifstream infile (input, std::ifstream::binary);
     unsigned long int length = 0;
     char * buffer = NULL;
-    unsigned int * p = NULL;
+    unsigned int * pInteger = NULL;
+    float * pFloat = NULL;
     if (infile) 
     {
         // get length of file:
@@ -62,7 +63,8 @@ int main(int argc, char** argv)
         infile.read (buffer,length);
         std::cerr << "all characters read successfully. \n";
         
-        p = (unsigned int*) buffer;
+        pInteger = (unsigned int*) buffer;
+        pFloat = (float *) buffer;
     }
     else
     {
@@ -77,7 +79,7 @@ int main(int argc, char** argv)
     for (unsigned long int i = 0; i < lines; ++i)
     {
         // pointer arithmetic depends on the pointer type: 3 unsigned int per line || 6 unsigned short per line.
-        std::cout << p[3*i] << ' ' << p[3*i + 1] << ' ' << p[3*i + 2] <<'\n';    
+        std::cout << pInteger[3*i] << ' ' << pInteger[3*i + 1] << ' ' << pFloat[3*i + 2] <<'\n';    
     }
     
 

@@ -14,7 +14,7 @@
 #include <pthread.h>
 #include <semaphore.h>
 
-#include "smallca.hpp"
+#include "smallca.h"
 
 // size of production buffer* bufferA{NULL}s per thread
 #define BUFFER_SIZE 6000000
