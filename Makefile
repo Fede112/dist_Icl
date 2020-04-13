@@ -8,18 +8,18 @@ LDFLAGS= # -lfmt
 DEBUG= -g -ggdb
 
 
-OBJS=dist_Icl_threads.o src/normalization.o 
+OBJS=dist_Icl_threads.o
 EXE=dist_Icl_threads.x
 default: $(EXE)
 
 
 
 # thread: 
-thread:	OBJS=dist_Icl_threads.o src/normalization.o 
+thread:	OBJS=dist_Icl_threads.o
 thread: LDFLAGS=-lpthread
 thread: dist_Icl_threads.x
 
-dist_Icl_threads.o: include/normalization.h
+dist_Icl_threads.o: include/smallca.h
 
 $(EXE): $(OBJS)
 	$(CXX) $^ -o $@  $(LDFLAGS)

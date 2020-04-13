@@ -2,11 +2,12 @@
 *.clean
 *.x
 *.o
-outfile*
-./data/
 *.b
 *.bin
 *.txt
+outfile*
+./data/
+./data_size/
 
 type_test.cc
 # binary_test.cc

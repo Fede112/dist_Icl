@@ -52,16 +52,22 @@ int main(int argc, char** argv)
     // load txt into SmallCA[] buffer: 
     //  qID*100 + centerqSize included
     load_txt(input, clusterAlign, bufferLen);
-    for (int i = 0; i < 10; ++i){printSCA(clusterAlign[i]);}
+    // for (int i = 0; i < 10; ++i){printSCA(clusterAlign[i]);}
 
     // calculate qSize values
     compute_cluster_size(clusterAlign, bufferLen);
+    for (int i = 0; i < 10; ++i){printSCA(clusterAlign[i]);}
 
-    for (int i = 0; i < 1000; ++i){printSCA(clusterAlign[i]);}
+    // sort back wrt sID
+    radix_sort((unsigned char*) clusterAlign, bufferLen, 16, 4, 8);
+    for (int i = 0; i < 10; ++i){printSCA(clusterAlign[i]);}
     
-    // std::ofstream out("BIG2_10e5_sorted.bin", std::ios::binary);
-    // out.write((char*)&clusterAlign, bufferLen);
-    // out.close();
+
+    std::ofstream out("BIG2_10e5.bin", std::ios::binary);
+    std::cout << "sizeof SmallCA: " << sizeof(SmallCA) << std::endl;
+    out.write((char*)clusterAlign, bufferLen*sizeof(SmallCA));
+    out.close();
+
 
     delete[] clusterAlign;
     return 0;
