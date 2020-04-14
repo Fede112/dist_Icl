@@ -16,7 +16,7 @@
 // Small Clustered Alignment structure (only essential data...)
 struct SmallCA
 {
-    uint32_t qID;
+    uint32_t qID; // qID*100 + center
     uint32_t qSize;
     uint32_t sID;
     uint16_t sstart;
@@ -83,11 +83,9 @@ void compute_cluster_size(SmallCA * clusterAlign, const uint64_t length)
 
         // find last occurrence
         auto high = std::upper_bound(low, end, val, compare_qID());
-        // std::cout << high->qID << std::endl;
 
         // compute the difference
         auto count = high - low;
-        // std::cout << count << std::endl;
 
         // add cluster size to the list
         for (auto p = low; p <= high; ++p)
@@ -152,7 +150,7 @@ void frequency(ClusterPairs * buffer, const uint64_t length, std::vector<Normali
         // compute the difference
         auto count = high - low;
 
-        unique.push_back(NormalizedPairs(val, count/norm));
+        unique.push_back(NormalizedPairs(val, (double)count/norm));
         
         // move to next element in vector (not immediate next)
         low = low + count;
@@ -174,7 +172,8 @@ uint64_t rows_txt(std::string fileName)
 
     inFile.close();
     
-    return ++bufferLen;; // last \n could be missing
+    // ++ because last \n could be missing
+    return ++bufferLen;; 
 
 }
 
@@ -220,15 +219,16 @@ void radix_sort(unsigned char * pData, uint64_t count, uint32_t record_size,
     typedef uint8_t k_t [key_size];
     typedef uint8_t record_t [record_size];
 
-
-    uint64_t mIndex[key_size][256] = {0};            /* index matrix */
+    // index matrix
+    uint64_t mIndex[key_size][256] = {0};            
     unsigned char * pTemp = new unsigned char [count*sizeof(record_t)];
     unsigned char * pDst, * pSrc;
     uint64_t i,j,m,n;
     k_t u;
     record_t v;
 
-    for(i = 0; i < count; i++)                  /* generate histograms */
+    // generate histograms
+    for(i = 0; i < count; i++)
     {         
         std::memcpy(&u, (pData + record_size*i + key_offset), sizeof(u));
         
@@ -239,7 +239,8 @@ void radix_sort(unsigned char * pData, uint64_t count, uint32_t record_size,
             // u >>= 8;
         }       
     }
-    for(j = 0; j < key_size; j++)             /* convert to indices */
+    // convert to indices 
+    for(j = 0; j < key_size; j++)
     {
         n = 0;
         for(i = 0; i < 256; i++)
@@ -250,7 +251,8 @@ void radix_sort(unsigned char * pData, uint64_t count, uint32_t record_size,
         }       
     }
 
-    pDst = pTemp;                       /* radix sort */
+    // radix sort
+    pDst = pTemp;                       
     pSrc = pData;
     for(j = 0; j < key_size; j++)
     {

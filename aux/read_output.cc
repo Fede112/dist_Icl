@@ -43,10 +43,10 @@ int main(int argc, char** argv)
 
     
     std::ifstream infile (input, std::ifstream::binary);
-    unsigned long int length = 0;
+    uint64_t length = 0;
     char * buffer = NULL;
-    unsigned int * pInteger = NULL;
-    float * pFloat = NULL;
+    uint32_t * pInteger = NULL;
+    double * pDouble = NULL;
     if (infile) 
     {
         // get length of file:
@@ -64,7 +64,7 @@ int main(int argc, char** argv)
         std::cerr << "all characters read successfully. \n";
         
         pInteger = (unsigned int*) buffer;
-        pFloat = (float *) buffer;
+        pDouble = (double *) buffer;
     }
     else
     {
@@ -73,13 +73,13 @@ int main(int argc, char** argv)
     infile.close();
     
     // each line has 3 unsigned int entries
-    unsigned long int lines = length/(3*sizeof(unsigned int));
+    uint32_t lines = length/(2*sizeof(uint32_t) + sizeof(double));
     std::cerr << lines << std::endl;
 
-    for (unsigned long int i = 0; i < lines; ++i)
+    for (uint64_t i = 0; i < lines; ++i)
     {
         // pointer arithmetic depends on the pointer type: 3 unsigned int per line || 6 unsigned short per line.
-        std::cout << pInteger[3*i] << ' ' << pInteger[3*i + 1] << ' ' << pFloat[3*i + 2] <<'\n';    
+        std::cout << pInteger[4*i+1] << ' ' << pInteger[4*i] << ' ' << pDouble[2*i + 1] <<'\n';    
     }
     
 

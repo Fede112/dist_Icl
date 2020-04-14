@@ -5,19 +5,18 @@
 #include <time.h>  
 #include <chrono>
 
-
 #include <memory>
 #include <pthread.h>
 #include <semaphore.h>
 
 #include "smallca.h"
-// #include "normalization.h"
 
 // size of production buffer* bufferA{NULL}s per thread
 #define BUFFER_SIZE 50000000
 #define MATCHING_THREADS 1
-#define COUNTING_THREADS 3 // doesn't work for 1 CONSUMER THREAD 
+#define COUNTING_THREADS 3
 #define MAX_qID 2353198020
+
 
 using namespace std;
 
@@ -38,11 +37,11 @@ uint32_t rankCount{0};
 pthread_mutex_t rankLock = PTHREAD_MUTEX_INITIALIZER;
 
 // array of map2_t for consumers
-vector <NormalizedPairs> vec_frequency[COUNTING_THREADS];
+std::vector <NormalizedPairs> vec_frequency[COUNTING_THREADS];
 
 
 // qIDs_partition array for a balanced load among threads. You need (n-1) points to generate n partitions.
-std::array <unsigned int, COUNTING_THREADS-1> partqIDs{0}; 
+std::array <unsigned int, COUNTING_THREADS-1> partqIDs; 
 
 //---------------------------------------------------------------------------------------------------------
 // ALIGNMENTS DISTANCE on the SEARCH
@@ -147,8 +146,6 @@ void *matching_clusters(void *qs)
     ++rankCount;
     pthread_mutex_unlock(&rankLock);
     
-    // std::cout << "Hi from thread: " << rank << std::endl;
-
     // find the partition of file A and B to analize
     uint64_t partIndices[MATCHING_THREADS+1][2] = {0};    
     files_partition(partIndices);
@@ -163,6 +160,7 @@ void *matching_clusters(void *qs)
     uint32_t s0{0};
 
 
+    uint64_t count_per_thread{0};
     while(posA<linesA && posB<linesB)
     {
         while(posB<linesB && alB->sID<alA->sID)
@@ -220,7 +218,7 @@ void *matching_clusters(void *qs)
                         // get mutex in position ctId 
                         pthread_mutex_lock(&queuesLock[ctId]);
                         // sem_wait(&sem_write[ctId]);
-
+                        count_per_thread++;
                         if (queues[ctId].fidx  + 1 < queues[ctId].bufferSize)
                         {
                             queues[ctId].buffer[queues[ctId].fidx].ID = (((uint64_t)qID1) << 32 ) | qID2;
@@ -236,7 +234,7 @@ void *matching_clusters(void *qs)
         }
     }
 
-    // std::cout << "rank: " << rank << '\t' << internal_count << std::endl;
+    std::cout << "rank: " << rank << "\t count: " << count_per_thread << std::endl;
     pthread_exit(NULL);
 }
 
@@ -265,14 +263,6 @@ void *counting(void *q)
 // USAGE:  ./a.out  input1 input2 recovery maxhours > output
 
 int main(int argc, char** argv) {
-
-    //time checking variables
-    time_t tstart, tend; 
-    double time_taken = 0;
-    
-    tstart = time(NULL); 
-
-    // key is uint32_t formed by [OLD qID*100+cl_idrel} qid_clidrel and it is a univoque identifier for a primary cluster (cl_idrel<=20 by definition on primarycl.cc)
 
     // OPEN THE TWO FILES, READ BOTH'S FIST LINE, FIND SMALLEST sID    
     // input (contain clustered alignments); say "B" files (B as Block, eaach block contains data foro
@@ -343,8 +333,8 @@ int main(int argc, char** argv) {
     // Matching Threads: each thread analyses a segment of (fileA, fileB) 
     // and fills the different queues used later by Counting Threads
     
-    auto t1_matching = std::chrono::high_resolution_clock::now();   
     
+    auto t1_matching = std::chrono::high_resolution_clock::now();   
     pthread_t tids_m[MATCHING_THREADS];
     for (int i = 0; i < MATCHING_THREADS; ++i)
     {
@@ -366,13 +356,17 @@ int main(int argc, char** argv) {
         pthread_join(tids_m[i], NULL);    
     }
 
-    std::cout << queues[0].fidx << '\t' << queues[1].fidx << '\t' << queues[2].fidx << std::endl;
+    std::cout << "Number of elements per queue: " << std::endl;
+    for (int i = 0; i < COUNTING_THREADS; ++i)
+    {
+        std::cout << queues[i].index << '\t' << queues[i].fidx << std::endl;
+    }
 
 
     auto t2_matching = std::chrono::high_resolution_clock::now();   
-    auto matching_waittime = std::chrono::duration_cast<std::chrono::miliseconds>
+    auto matching_waittime = std::chrono::duration_cast<std::chrono::milliseconds>
                         (t2_matching-t1_matching).count();
-    cerr << "Matching processing time: "<< matching_waittime << endl;
+    std::cerr << "Matching processing time: "<< matching_waittime << std::endl;
     //---------------------------------------------------------------------------------------------------------
 
     // Counting Threads
@@ -397,16 +391,14 @@ int main(int argc, char** argv) {
     }
     
     auto t2_counting = std::chrono::high_resolution_clock::now();   
-    auto counting_waittime = std::chrono::duration_cast<std::chrono::miliseconds>
+    auto counting_waittime = std::chrono::duration_cast<std::chrono::milliseconds>
                         (t2_counting-t1_counting).count();
-    cerr << "Counting processing time: "<< counting_waittime << endl;
+    std::cerr << "Counting processing time: "<< counting_waittime << std::endl;
 
     //---------------------------------------------------------------------------------------------------------
 
-    tend = time(NULL); 
-    time_taken=difftime(tend, tstart);
-    cerr << "\nProcessing time_taken " << time_taken << endl; 
-
+    std::cerr << "Total processing time: "<< matching_waittime + counting_waittime << std::endl;
+    
     // PRINT OUTPUT
     std::cout << "Writing to output... ";
     auto outfile = std::fstream("outfile.bin", std::ios::out | std::ios::binary);
@@ -423,11 +415,6 @@ int main(int argc, char** argv) {
     delete[] bufferA;
     delete[] bufferB;
 
-    
-    // tend = time(NULL); 
-    // time_taken=difftime(tend, tstart);
-    // cerr << "\nTOTAL time_taken " << time_taken << endl; 
-    
      
     return 0;
 
