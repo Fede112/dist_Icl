@@ -1,17 +1,9 @@
-#include <stdio.h>
-#include <stdlib.h>
 #include <math.h>
 #include <vector>
 #include <iostream>
 #include <fstream>
-#include <sstream>
-#include <map>
 #include <time.h>  
 #include <chrono>
-#include <iomanip>  
-#include <unordered_map>
-#include <cstring> // memcpy
-
 
 
 #include <memory>
@@ -19,11 +11,11 @@
 #include <semaphore.h>
 
 #include "smallca.h"
-#include "normalization.h"
+// #include "normalization.h"
 
 // size of production buffer* bufferA{NULL}s per thread
 #define BUFFER_SIZE 50000000
-#define MATCHING_THREADS 2
+#define MATCHING_THREADS 1
 #define COUNTING_THREADS 3 // doesn't work for 1 CONSUMER THREAD 
 #define MAX_qID 2353198020
 
@@ -73,7 +65,7 @@ double dist(const SmallCA * i, const SmallCA * j){
 }
 
 //---------------------------------------------------------------------------------------------------------
-// COUNTING_THREADS METHODS
+// THREADS METHODS
 //---------------------------------------------------------------------------------------------------------
 
 
@@ -110,8 +102,6 @@ void queues_partition(std::array <unsigned int, COUNTING_THREADS - 1> & array)
 void files_partition(uint64_t (&partIndices)[MATCHING_THREADS+1][2])
 // retrieve the indices of the partitions for bufferA and bufferB
 {
-
-    // partIndices[MATCHING_THREADS][NUM_FILES]
 
     // Index 0: bufferA and Index 1: bufferB
     SmallCA * alignment[2] = {(SmallCA*) bufferA, (SmallCA*) bufferB};
@@ -276,21 +266,13 @@ void *counting(void *q)
 
 int main(int argc, char** argv) {
 
-
-    // Initialize semaphores
-    // for(sem_t &sw : sem_write){sem_init(&sw, 0, 1);}
-    // for(sem_t &sr : sem_read){sem_init(&sr, 0, 0);}
-
     //time checking variables
     time_t tstart, tend; 
     double time_taken = 0;
-
-   
     
     tstart = time(NULL); 
 
-    // key is LONG INT formed by [OLD qID*100+cl_idrel} qid_clidrel and it is a univoque identifier for a primary cluster (cl_idrel<=20 by definition on primarycl.cc)
-
+    // key is uint32_t formed by [OLD qID*100+cl_idrel} qid_clidrel and it is a univoque identifier for a primary cluster (cl_idrel<=20 by definition on primarycl.cc)
 
     // OPEN THE TWO FILES, READ BOTH'S FIST LINE, FIND SMALLEST sID    
     // input (contain clustered alignments); say "B" files (B as Block, eaach block contains data foro
@@ -337,11 +319,7 @@ int main(int argc, char** argv) {
     }
     infileB.close();
 
-
-    // SmallCA * alA = (SmallCA *) bufferA;  //pointer to SmallCA to identify bufferA, i.e. the main file
-    // SmallCA * alB = (SmallCA *) bufferB; //pointer to SmallCA to bufferB, secondary file
-
-    
+   
     // Define qIDs balanced partition per thread
     queues_partition(partqIDs);
 
@@ -356,11 +334,17 @@ int main(int argc, char** argv) {
     for (int i = 0; i < COUNTING_THREADS; i++)
         pthread_mutex_init(&queuesLock[i], NULL);
 
+    // Initialize semaphores for each queue
     for(sem_t &sw : sem_write){sem_init(&sw, 0, 1);}
 
     
+
+    //---------------------------------------------------------------------------------------------------------
     // Matching Threads: each thread analyses a segment of (fileA, fileB) 
     // and fills the different queues used later by Counting Threads
+    
+    auto t1_matching = std::chrono::high_resolution_clock::now();   
+    
     pthread_t tids_m[MATCHING_THREADS];
     for (int i = 0; i < MATCHING_THREADS; ++i)
     {
@@ -369,7 +353,7 @@ int main(int argc, char** argv) {
         // Create attributes
         pthread_attr_t attr;
         pthread_attr_init(&attr);
-        auto thread_err = pthread_create(&tids_m[i], &attr, matching_clusters, &queues);
+        auto thread_err = pthread_create(&tids_m[i], NULL, matching_clusters, &queues);
         if (thread_err != 0)
                 printf("\nCan't create thread :[%s]", strerror(thread_err));
     } 
@@ -385,20 +369,26 @@ int main(int argc, char** argv) {
     std::cout << queues[0].fidx << '\t' << queues[1].fidx << '\t' << queues[2].fidx << std::endl;
 
 
+    auto t2_matching = std::chrono::high_resolution_clock::now();   
+    auto matching_waittime = std::chrono::duration_cast<std::chrono::miliseconds>
+                        (t2_matching-t1_matching).count();
+    cerr << "Matching processing time: "<< matching_waittime << endl;
+    //---------------------------------------------------------------------------------------------------------
 
+    // Counting Threads
+    auto t1_counting = std::chrono::high_resolution_clock::now();   
 
-    
-    // Consumer COUNTING_THREADS
     pthread_t tids_c[COUNTING_THREADS];
     for (int i = 0; i < COUNTING_THREADS; ++i)
     {
         // Create attributes
         pthread_attr_t attr;
         pthread_attr_init(&attr);
-        pthread_create(&tids_c[i], &attr, counting, &queues[i]);
+        auto thread_err = pthread_create(&tids_c[i], NULL, counting, &queues[i]);
+        if (thread_err != 0)
+            printf("\nCan't create thread :[%s]", strerror(thread_err));
+
     } 
-
-
 
     // Join counting threads
     for (int i = 0; i < COUNTING_THREADS; ++i)
@@ -406,12 +396,19 @@ int main(int argc, char** argv) {
         pthread_join(tids_c[i], NULL);    
     }
     
+    auto t2_counting = std::chrono::high_resolution_clock::now();   
+    auto counting_waittime = std::chrono::duration_cast<std::chrono::miliseconds>
+                        (t2_counting-t1_counting).count();
+    cerr << "Counting processing time: "<< counting_waittime << endl;
+
+    //---------------------------------------------------------------------------------------------------------
+
     tend = time(NULL); 
     time_taken=difftime(tend, tstart);
     cerr << "\nProcessing time_taken " << time_taken << endl; 
 
     // PRINT OUTPUT
-    std::cout << "Writing to output: " << std::endl;
+    std::cout << "Writing to output... ";
     auto outfile = std::fstream("outfile.bin", std::ios::out | std::ios::binary);
     for (int tid = 0; tid < COUNTING_THREADS; ++tid)
     {
@@ -422,6 +419,7 @@ int main(int argc, char** argv) {
     }
 
     outfile.close();
+    std::cout << "done " << std::endl;
     delete[] bufferA;
     delete[] bufferB;
 
