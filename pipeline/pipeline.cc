@@ -40,7 +40,6 @@ int main(int argc, char** argv)
     input = argv[optind];
     ////////////////////////////////////////////////////////////////////////
 
-
     SmallCA* clusterAlign;
     uint64_t bufferLen; 
 
@@ -50,7 +49,7 @@ int main(int argc, char** argv)
     clusterAlign = new SmallCA [bufferLen];
     
     // load txt into SmallCA[] buffer: 
-    //  qID*100 + centerqSize included
+    //  qID*100 + center ; qSize included
     load_txt(input, clusterAlign, bufferLen);
     // for (int i = 0; i < 10; ++i){printSCA(clusterAlign[i]);}
 

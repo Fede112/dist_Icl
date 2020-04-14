@@ -5,8 +5,8 @@
 * Start from original 200 files ALREADY sorted by cluster id  (aX.txt where X i from 1 to 200)
 
 * compute cluster size
-   needs: convert aX.txt to aX.bin (OK);
-   compute cluster sizes (TODO) - print binary output ( bX.bin ) which will have 1 extra column
+   needs: convert aX.txt to aX.bin - this binary includes the empty qSize column (OK);  `load_txt()`
+   compute cluster sizes (TODO) - print binary output ( bX.bin ) which will have 1 extra column `compute_cluster_size()`
 
 * sort bX.bin wrt sID / merge 200 files in in 2 files sorted wrt qID
  (A) using Fede's programs (trying this)
