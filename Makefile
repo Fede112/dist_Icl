@@ -3,7 +3,7 @@ SHELL=/bin/sh
 
 CXX=g++
 # CFLAGS= -Wall -Wextra -O3 -ffast-math -fexpensive-optimizations -msse3 
-CXXFLAGS= -O3 -std=c++14 -I ./include/ -Wall
+CXXFLAGS= -O2 -std=c++14 -I ./include/ -Wall
 LDFLAGS= # -lfmt
 DEBUG= -g -ggdb
 

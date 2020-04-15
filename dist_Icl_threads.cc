@@ -12,9 +12,9 @@
 #include "smallca.h"
 
 // size of production buffer* bufferA{NULL}s per thread
-#define BUFFER_SIZE 50000000
+#define BUFFER_SIZE 60000000
 #define MATCHING_THREADS 1
-#define COUNTING_THREADS 3
+#define COUNTING_THREADS 1
 #define MAX_qID 2353198020
 
 
@@ -68,7 +68,24 @@ double dist(const SmallCA * i, const SmallCA * j){
 //---------------------------------------------------------------------------------------------------------
 
 
-// Struct to pass to pthread functions
+// Struct to pass to counting pthreads
+struct Queue
+{
+    uint32_t index;
+    uint64_t fill;
+    uint64_t fidx;
+    uint64_t bufferSize;
+    // using unique ptr to buffer. Good implementation?
+    std::unique_ptr<ClusterPairs []> buffer;
+    
+                            
+    Queue():index(0),fill(0), fidx(0), bufferSize(0){}
+    Queue(uint32_t i, uint64_t f, uint64_t fi, uint64_t bs): 
+    index(i), fill(f), fidx(fi), bufferSize(bs), buffer{new ClusterPairs [bs]}
+    {}
+
+};
+
 struct Queue
 {
     uint32_t index;
@@ -219,6 +236,7 @@ void *matching_clusters(void *qs)
                         pthread_mutex_lock(&queuesLock[ctId]);
                         // sem_wait(&sem_write[ctId]);
                         count_per_thread++;
+
                         if (queues[ctId].fidx  + 1 < queues[ctId].bufferSize)
                         {
                             queues[ctId].buffer[queues[ctId].fidx].ID = (((uint64_t)qID1) << 32 ) | qID2;
@@ -338,8 +356,6 @@ int main(int argc, char** argv) {
     pthread_t tids_m[MATCHING_THREADS];
     for (int i = 0; i < MATCHING_THREADS; ++i)
     {
-        int *rank = (int *) malloc(sizeof(*rank));
-        *rank = i;
         // Create attributes
         pthread_attr_t attr;
         pthread_attr_init(&attr);
