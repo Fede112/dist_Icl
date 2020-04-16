@@ -17,13 +17,13 @@
 #include "smallca.h"
 
 // size of production buffer* bufferA{NULL}s per thread
-#define BUFFER_SIZE 6000000
+#define BUFFER_SIZE 4000000
 #define CONSUMER_THREADS 3 // doesn't work for 1 CONSUMER THREAD 
 #define MAX_qID 2353198020
 
 using namespace std;
 
-typedef std::map<unsigned int, std::map<unsigned int,unsigned int> >  map2_t;
+typedef std::map<unsigned int, std::map<unsigned int, double> >  map2_t;
 
 //---------------------------------------------------------------------------------------------------------
 // GLOBAL VARIABLES
@@ -79,13 +79,13 @@ struct Queue
     unsigned int fidx;
     unsigned int buffer_size;
     // using unique ptr to buffer. Good implementation?
-    std::unique_ptr<unsigned int []> write_buffer;
-    std::unique_ptr<unsigned int []> read_buffer;
+    std::unique_ptr<MatchedPair []> write_buffer;
+    std::unique_ptr<MatchedPair []> read_buffer;
     
                             
     Queue():index(0),fill(0), fidx(0), buffer_size(0){}
     Queue(unsigned int i, unsigned int f, unsigned int fi, unsigned int bs): 
-    index(i), fill(f), fidx(fi), buffer_size(bs), write_buffer{new unsigned int [bs]}, read_buffer{new unsigned int [bs]}
+    index(i), fill(f), fidx(fi), buffer_size(bs), write_buffer{new MatchedPair [bs]}, read_buffer{new MatchedPair [bs]}
     {}
 
 };
@@ -156,6 +156,9 @@ void *producer(void *qs)
 
                         auto qID1 = min(pA->qID, pB->qID);
                         auto qID2 = max(pA->qID, pB->qID);
+                        auto norm = min(pA->qID, pB->qID);
+                        auto pair = MatchedPair(qID1, qID2, 1.);
+                        // std::cerr << pair.ID1 << '\t' << pair.ID2 << '\t' << pair.distance << '\n';
             
                         // decide to which queue the pair goes
                         int tidx = CONSUMER_THREADS - 1;
@@ -170,9 +173,8 @@ void *producer(void *qs)
                                                
                         if (queues[tidx].fidx  + 1 < queues[tidx].buffer_size)
                         {
-                            queues[tidx].write_buffer[queues[tidx].fidx] = qID1;
-                            queues[tidx].write_buffer[queues[tidx].fidx+1] = qID2;
-                            queues[tidx].fidx+=2;
+                            queues[tidx].write_buffer[queues[tidx].fidx] = pair;
+                            queues[tidx].fidx+=1;
                         }
                         else
                         {
@@ -192,15 +194,14 @@ void *producer(void *qs)
                             {
                                 queues[i].write_buffer.swap(queues[i].read_buffer);
                                 // cerr << (double)queues[i].fidx/BUFFER_SIZE << " ";
-                                if(i==CONSUMER_THREADS) cerr << endl;
+                                cerr << queues[i].index << " buffer: "<< queues[i].fidx << endl;
                                 queues[i].fill = queues[i].fidx;
                                 queues[i].fidx = 0;
                             }
 
                             // add missing element in new buffer
-                            queues[tidx].write_buffer[queues[tidx].fidx] = qID1;
-                            queues[tidx].write_buffer[queues[tidx].fidx+1] = qID2;
-                            queues[tidx].fidx+=2;
+                            queues[tidx].write_buffer[queues[tidx].fidx] = pair;
+                            queues[tidx].fidx+=1;
                             // sem_post()
                             for(sem_t &sr : sem_read){sem_post(&sr);}
                         }
@@ -242,9 +243,9 @@ void *consumer(void *q)
         sem_wait(&sem_read[queue->index]);
 
         // read entire buffer
-        for (unsigned int i = 0; i < queue->fill; i=i+2)
+        for (unsigned int i = 0; i < queue->fill; ++i)
         {
-            vec_maps[queue->index][ queue->read_buffer[i] ][ queue->read_buffer[i+1] ]+=0.00213;
+            ++vec_maps[queue->index][ queue->read_buffer[i].ID1 ][ queue->read_buffer[i].ID2 ]; //+= queue->read_buffer[i].distance;
         }
 
         // sem_post write

@@ -108,13 +108,14 @@ struct ClusterPairs
     ClusterPairs(): ID(0), norm(0) {}
 };
 
-struct NormalizedPairs
+struct MatchedPair
 {
-    uint64_t ID;
+    uint32_t ID1;
+    uint32_t ID2;
     double distance;
 
-    NormalizedPairs(): ID(0), distance(0) {}
-    NormalizedPairs(uint64_t id, double d): ID(id), distance(d) {}
+    MatchedPair(): ID1(0), ID2(0), distance(0) {}
+    MatchedPair(uint32_t id1, uint32_t id2, double d): ID1(id1), ID2(id2), distance(d) {}
 };
 
 
@@ -134,30 +135,30 @@ struct compare_pair
     }
 };
 
-void frequency(ClusterPairs * buffer, const uint64_t length, std::vector<NormalizedPairs> & unique )
-{
-    auto end = buffer + length;
-    auto low = buffer;
+// void frequency(ClusterPairs * buffer, const uint64_t length, std::vector<NormalizedPairs> & unique )
+// {
+//     auto end = buffer + length;
+//     auto low = buffer;
 
-    while (low != end)
-    {
-        uint64_t val = low->ID;
-        uint32_t norm = low->norm;
+//     while (low != end)
+//     {
+//         uint64_t val = low->ID;
+//         uint32_t norm = low->norm;
 
-        // find last occurrence
-        auto high = std::upper_bound(low, end, val, compare_pair());
+//         // find last occurrence
+//         auto high = std::upper_bound(low, end, val, compare_pair());
 
-        // compute the difference
-        auto count = high - low;
+//         // compute the difference
+//         auto count = high - low;
 
-        unique.push_back(NormalizedPairs(val, (double)count/norm));
+//         unique.push_back(NormalizedPairs(val, (double)count/norm));
         
-        // move to next element in vector (not immediate next)
-        low = low + count;
-    }
+//         // move to next element in vector (not immediate next)
+//         low = low + count;
+//     }
 
-    return;
-}
+//     return;
+// }
 
 
 
