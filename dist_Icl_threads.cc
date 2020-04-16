@@ -1,9 +1,14 @@
+#include <stdio.h>
+#include <stdlib.h>
 #include <math.h>
 #include <vector>
 #include <iostream>
 #include <fstream>
+#include <sstream>
+#include <map>
 #include <time.h>  
 #include <chrono>
+#include <iomanip>  
 
 #include <memory>
 #include <pthread.h>
@@ -12,36 +17,34 @@
 #include "smallca.h"
 
 // size of production buffer* bufferA{NULL}s per thread
-#define BUFFER_SIZE 60000000
-#define MATCHING_THREADS 1
-#define COUNTING_THREADS 1
+#define BUFFER_SIZE 6000000
+#define CONSUMER_THREADS 3 // doesn't work for 1 CONSUMER THREAD 
 #define MAX_qID 2353198020
-
 
 using namespace std;
 
+typedef std::map<unsigned int, std::map<unsigned int,unsigned int> >  map2_t;
 
 //---------------------------------------------------------------------------------------------------------
 // GLOBAL VARIABLES
 //---------------------------------------------------------------------------------------------------------
 
 char * bufferA{NULL}, * bufferB{NULL};
-unsigned int totalLinesA{0}, totalLinesB{0};
+unsigned int linesA{0}, linesB{0};
 
-// queues mutex
-pthread_mutex_t queuesLock[COUNTING_THREADS];
-std::array<sem_t, COUNTING_THREADS> sem_write;
+// Semaphores (TODO: cleaner implementation with CV)
+std::array<sem_t, CONSUMER_THREADS> sem_write;
+std::array<sem_t, CONSUMER_THREADS> sem_read;
 
-// Threads rank variable
-uint32_t rankCount{0};
-pthread_mutex_t rankLock = PTHREAD_MUTEX_INITIALIZER;
+// global flag to terminate consumers
+unsigned int done{0};
+pthread_mutex_t done_lock = PTHREAD_MUTEX_INITIALIZER;
 
 // array of map2_t for consumers
-std::vector <NormalizedPairs> vec_frequency[COUNTING_THREADS];
-
+std::vector<map2_t> vec_maps(CONSUMER_THREADS);
 
 // qIDs_partition array for a balanced load among threads. You need (n-1) points to generate n partitions.
-std::array <unsigned int, COUNTING_THREADS-1> partqIDs; 
+std::array <unsigned int, CONSUMER_THREADS-1> qIDs_partition{0}; 
 
 //---------------------------------------------------------------------------------------------------------
 // ALIGNMENTS DISTANCE on the SEARCH
@@ -68,116 +71,50 @@ double dist(const SmallCA * i, const SmallCA * j){
 //---------------------------------------------------------------------------------------------------------
 
 
-// Struct to pass to counting pthreads
+// Struct to pass to pthread functions
 struct Queue
 {
-    uint32_t index;
-    uint64_t fill;
-    uint64_t fidx;
-    uint64_t bufferSize;
+    unsigned int index;
+    unsigned int fill;
+    unsigned int fidx;
+    unsigned int buffer_size;
     // using unique ptr to buffer. Good implementation?
-    std::unique_ptr<ClusterPairs []> buffer;
+    std::unique_ptr<unsigned int []> write_buffer;
+    std::unique_ptr<unsigned int []> read_buffer;
     
                             
-    Queue():index(0),fill(0), fidx(0), bufferSize(0){}
-    Queue(uint32_t i, uint64_t f, uint64_t fi, uint64_t bs): 
-    index(i), fill(f), fidx(fi), bufferSize(bs), buffer{new ClusterPairs [bs]}
+    Queue():index(0),fill(0), fidx(0), buffer_size(0){}
+    Queue(unsigned int i, unsigned int f, unsigned int fi, unsigned int bs): 
+    index(i), fill(f), fidx(fi), buffer_size(bs), write_buffer{new unsigned int [bs]}, read_buffer{new unsigned int [bs]}
     {}
 
 };
 
-struct Queue
-{
-    uint32_t index;
-    uint64_t fill;
-    uint64_t fidx;
-    uint64_t bufferSize;
-    // using unique ptr to buffer. Good implementation?
-    std::unique_ptr<ClusterPairs []> buffer;
-    
-                            
-    Queue():index(0),fill(0), fidx(0), bufferSize(0){}
-    Queue(uint32_t i, uint64_t f, uint64_t fi, uint64_t bs): 
-    index(i), fill(f), fidx(fi), bufferSize(bs), buffer{new ClusterPairs [bs]}
-    {}
-
-};
-
-void queues_partition(std::array <unsigned int, COUNTING_THREADS - 1> & array)
+void balanced_partition(std::array <unsigned int, CONSUMER_THREADS - 1> & array)
 // calculate the qIDs to equally distribute the pairs qID1-qID2 in each thread.
 // It is an analytical expression based on the probability of finding a pair qID1-qID2, where qID1<qID2 always 
 {
-    for (int i = 0; i < COUNTING_THREADS-1; ++i)
+    for (int i = 1; i < CONSUMER_THREADS; ++i)
     {
-        array[i] = MAX_qID*(    1 - sqrt( 1 - (i+1)*((MAX_qID-1.)/(MAX_qID*COUNTING_THREADS)) )  );
+        array[i-1] = MAX_qID*(    1 - sqrt( 1 - i*((MAX_qID-1.)/(MAX_qID*CONSUMER_THREADS)) )  );
     }
     return;
 }
 
 
-void files_partition(uint64_t (&partIndices)[MATCHING_THREADS+1][2])
-// retrieve the indices of the partitions for bufferA and bufferB
-{
 
-    // Index 0: bufferA and Index 1: bufferB
-    SmallCA * alignment[2] = {(SmallCA*) bufferA, (SmallCA*) bufferB};
-    
-    uint64_t partSize[2] = {totalLinesA/MATCHING_THREADS, totalLinesB/MATCHING_THREADS};
-    uint64_t partReminder[2] = {totalLinesA%MATCHING_THREADS, totalLinesB%MATCHING_THREADS};
-    
-    // uniform partition A
-    partIndices[0][0] = 0;
-    partIndices[0][1] = 0;
-    for (uint32_t i = 1; i <=  MATCHING_THREADS; ++i)
-    {
-        for (uint32_t f = 0; f < 2; ++f)
-        {
-            partIndices[i][f] = partSize[f] + partIndices[i-1][f];
-            if (i <= partReminder[f]) {partIndices[i][f] +=1;}      
-        }
-    }
-
-    // shift to match sID
-    for (uint32_t i = 1; i <  MATCHING_THREADS; ++i)
-    {
-        // we use bufferA for picking the reference sID
-        auto sValue = (alignment[0] + partIndices[i][0])->sID;
-        
-        for (uint32_t f = 0; f < 2; ++f)
-        {
-            auto start = std::lower_bound(alignment[f] + partIndices[i-1][f], alignment[f] + partIndices[i+1][f], sValue, compare_sID());
-            partIndices[i][f] -= (alignment[f] + partIndices[i][f]) - start; 
-        }
-        
-    }
-    return;
-}
-
-void *matching_clusters(void *qs) 
+void *producer(void *qs) 
 {
     Queue *queues = (Queue*) qs;
-
-
-    pthread_mutex_lock(&rankLock);
-    int rank = rankCount;
-    ++rankCount;
-    pthread_mutex_unlock(&rankLock);
+    // std::cerr << "Hi from producer thread " << std::endl;
     
-    // find the partition of file A and B to analize
-    uint64_t partIndices[MATCHING_THREADS+1][2] = {0};    
-    files_partition(partIndices);
 
-    SmallCA * alA = (SmallCA *) bufferA  + partIndices[rank][0];  //pointer to SmallCA to identify bufferA, i.e. the main file
-    SmallCA * alB = (SmallCA *) bufferB  + partIndices[rank][1]; //pointer to SmallCA to bufferB, secondary file
+    SmallCA * alA = (SmallCA *) bufferA;  //pointer to SmallCA to identify bufferA, i.e. the main file
+    SmallCA * alB = (SmallCA *) bufferB; //pointer to SmallCA to bufferB, secondary file
 
-    uint64_t linesA = partIndices[rank+1][0] - partIndices[rank][0];
-    uint64_t linesB = partIndices[rank+1][1] - partIndices[rank][1];
+    unsigned long int posA{0}, posB{0};
+    unsigned int s0{0};
 
-    uint64_t posA{0}, posB{0};
-    uint32_t s0{0};
-
-
-    uint64_t count_per_thread{0};
     while(posA<linesA && posB<linesB)
     {
         while(posB<linesB && alB->sID<alA->sID)
@@ -215,63 +152,118 @@ void *matching_clusters(void *qs)
                 for (auto pB = init_subB; pB < alB; ++pB)
                 {
                     if( dist(pA,pB) < 0.2 ) 
-                    {                        
-                        // int norm{2};
+                    {
+
                         auto qID1 = min(pA->qID, pB->qID);
                         auto qID2 = max(pA->qID, pB->qID);
-                        auto norm = min(pA->qSize, pB->qSize);
-                        
+            
                         // decide to which queue the pair goes
-                        int ctId = COUNTING_THREADS - 1;
-                        for (int i = 1; i < COUNTING_THREADS; ++i)
+                        int tidx = CONSUMER_THREADS - 1;
+                        for (int i = 1; i < CONSUMER_THREADS; ++i)
                         {
-                            if(qID1 < partqIDs[i-1])
+                            if(qID1 < qIDs_partition[i-1])
                             {
-                                ctId = i-1;
+                                tidx = i-1;
                                 break;
                             }
                         }
-
-                        // get mutex in position ctId 
-                        pthread_mutex_lock(&queuesLock[ctId]);
-                        // sem_wait(&sem_write[ctId]);
-                        count_per_thread++;
-
-                        if (queues[ctId].fidx  + 1 < queues[ctId].bufferSize)
+                                               
+                        if (queues[tidx].fidx  + 1 < queues[tidx].buffer_size)
                         {
-                            queues[ctId].buffer[queues[ctId].fidx].ID = (((uint64_t)qID1) << 32 ) | qID2;
-                            queues[ctId].buffer[queues[ctId].fidx].norm = norm;
-                            queues[ctId].fidx++;
+                            queues[tidx].write_buffer[queues[tidx].fidx] = qID1;
+                            queues[tidx].write_buffer[queues[tidx].fidx+1] = qID2;
+                            queues[tidx].fidx+=2;
                         }
-                        // free mutex in position ctId
-                        pthread_mutex_unlock(&queuesLock[ctId]);
-                        // sem_post(&sem_write[ctId]); 
-                    }
+                        else
+                        {
+                            // cerr << "Producer: swapping " << tidx << " with " << queues[tidx].fidx << endl; 
+                            // wait
+                            // auto t1_producer = std::chrono::high_resolution_clock::now();   
+                            for(sem_t &sw : sem_write){sem_wait(&sw);}
+                            // auto t2_producer = std::chrono::high_resolution_clock::now();
+
+                            // unsigned int producer_waittime;
+                            // producer_waittime = std::chrono::duration_cast<std::chrono::milliseconds>
+                                                // (t2_producer-t1_producer).count();
+                            // cerr << "Producer waiting time: "<< producer_waittime << endl;
+
+                            // swap
+                            for (int i = 0; i < CONSUMER_THREADS; ++i)
+                            {
+                                queues[i].write_buffer.swap(queues[i].read_buffer);
+                                // cerr << (double)queues[i].fidx/BUFFER_SIZE << " ";
+                                if(i==CONSUMER_THREADS) cerr << endl;
+                                queues[i].fill = queues[i].fidx;
+                                queues[i].fidx = 0;
+                            }
+
+                            // add missing element in new buffer
+                            queues[tidx].write_buffer[queues[tidx].fidx] = qID1;
+                            queues[tidx].write_buffer[queues[tidx].fidx+1] = qID2;
+                            queues[tidx].fidx+=2;
+                            // sem_post()
+                            for(sem_t &sr : sem_read){sem_post(&sr);}
+                        }
+                    }                    
                 }
-            }
-        }
+            }            
+        }   
     }
 
-    std::cout << "rank: " << rank << "\t count: " << count_per_thread << std::endl;
+    // wait
+    for(sem_t &sw : sem_write){sem_wait(&sw);}
+
+    // swap
+    for (int i = 0; i < CONSUMER_THREADS; ++i)
+    {
+        queues[i].write_buffer.swap(queues[i].read_buffer);
+        cerr << queues[i].index << " buffer: "<< queues[i].fidx << endl;
+        queues[i].fill = queues[i].fidx;
+        queues[i].fidx = 0;
+    }
+    // sem_post()
+    for(sem_t &sr : sem_read){sem_post(&sr);}
+
+    pthread_mutex_lock(&done_lock);
+    done = 1;
+    pthread_mutex_unlock(&done_lock);
     pthread_exit(NULL);
+
 }
 
-void *counting(void *q) 
+void *consumer(void *q) 
 {
     Queue * queue = (Queue*) q;
-    // std::cout << "Hi from counting thread: " << queue->index << std::endl;
+    // std::cerr << "Hi from consumer thread: " << queue->index << std::endl;
 
-    auto tmp = (unsigned char *) queue->buffer.get();
-    radix_sort(tmp, queue->fidx, sizeof(ClusterPairs), 8, 0);
-    
-    
-    vec_frequency[queue->index].reserve(queue->fidx);
-    frequency(queue->buffer.get(), queue->fidx, vec_frequency[queue->index]);
+    while(1)
+    {
+        // wait for sem_read
+        sem_wait(&sem_read[queue->index]);
 
-    pthread_exit(NULL);
+        // read entire buffer
+        for (unsigned int i = 0; i < queue->fill; i=i+2)
+        {
+            vec_maps[queue->index][ queue->read_buffer[i] ][ queue->read_buffer[i+1] ]+=0.00213;
+        }
 
+        // sem_post write
+        sem_post(&sem_write[queue->index]);
+
+
+        // exit routine condition
+        pthread_mutex_lock(&done_lock);
+        if (done == 1)
+        {
+            pthread_mutex_unlock(&done_lock);
+            pthread_exit(NULL);
+        }
+        pthread_mutex_unlock(&done_lock);
+
+    }
 
 }
+
 
 
 //_______________________________________________________________________________________________________//
@@ -281,6 +273,28 @@ void *counting(void *q)
 // USAGE:  ./a.out  input1 input2 recovery maxhours > output
 
 int main(int argc, char** argv) {
+
+
+    // Initialize semaphores
+    for(sem_t &sw : sem_write){sem_init(&sw, 0, 1);}
+    for(sem_t &sr : sem_read){sem_init(&sr, 0, 0);}
+
+    //time checking variables
+    // double max_hours; max_hours=atof(argv[4]);
+    time_t tstart, tend; 
+    double time_taken = 0;
+
+    // unsigned int recovery = atoi(argv[3]);
+    // cerr << "Found recovery point: " << recovery << endl;
+   
+    
+    tstart = time(NULL); 
+
+    // map<string, int> countingmap;  //map to be used to store the counts of matches between two clusters.
+    // map<unsigned int, map<unsigned int,unsigned int> >  countingmap;
+    // key is LONG INT formed by [OLD qID*100+cl_idrel} qid_clidrel and it is a univoque identifier for a primary cluster (cl_idrel<=20 by definition on primarycl.cc)
+    //map<int,int> clpops; //ma to be used to store the poulation of the clusters; to be used when computing distances. key is qID*100+cl_idrel
+
 
     // OPEN THE TWO FILES, READ BOTH'S FIST LINE, FIND SMALLEST sID    
     // input (contain clustered alignments); say "B" files (B as Block, eaach block contains data foro
@@ -293,7 +307,7 @@ int main(int argc, char** argv) {
         bytesA = infileA.tellg();
         infileA.seekg (0, infileA.beg);
         bufferA = new char [bytesA];
-        totalLinesA = bytesA/sizeof(SmallCA);
+        linesA = bytesA/sizeof(SmallCA);
 
         std::cerr << "Reading " << bytesA << " characters... ";
         // read data as a block:
@@ -313,7 +327,7 @@ int main(int argc, char** argv) {
         bytesB = infileB.tellg();
         infileB.seekg (0, infileB.beg);
         bufferB = new char [bytesB];
-        totalLinesB = bytesB/sizeof(SmallCA);
+        linesB = bytesB/sizeof(SmallCA);
 
         std::cerr << "Reading " << bytesB << " characters... ";
         // read data as a block:
@@ -327,110 +341,99 @@ int main(int argc, char** argv) {
     }
     infileB.close();
 
-   
-    // Define qIDs balanced partition per thread
-    queues_partition(partqIDs);
+        
+    //scroll till the recovery checkpoint (both files A and B)
+    // while(posB<linesB && alB->sID<=recovery){++alB; ++posB;}
+    // while(posA<linesA && alA->sID<=recovery){++alA; ++posA;}
 
+    
     // Initialize queues
-    std::array<Queue, COUNTING_THREADS> queues;
-    for (int i = 0; i < COUNTING_THREADS; ++i)
+    std::array<Queue, CONSUMER_THREADS> queues;
+    for (int i = 0; i < CONSUMER_THREADS; ++i)
     {
         queues[i] = Queue(i,0,0,BUFFER_SIZE);
     }
     
-    // Initialize mutex for each queue
-    for (int i = 0; i < COUNTING_THREADS; i++)
-        pthread_mutex_init(&queuesLock[i], NULL);
 
-    // Initialize semaphores for each queue
-    for(sem_t &sw : sem_write){sem_init(&sw, 0, 1);}
-
-    
+    // Define qIDs balanced partition per thread
+    balanced_partition(qIDs_partition);
 
     //---------------------------------------------------------------------------------------------------------
-    // Matching Threads: each thread analyses a segment of (fileA, fileB) 
-    // and fills the different queues used later by Counting Threads
+    auto t1_processing = std::chrono::high_resolution_clock::now();   
     
+    // Producer thread
+    pthread_t tprod;
+    pthread_create(&tprod, NULL, producer, &queues);
     
-    auto t1_matching = std::chrono::high_resolution_clock::now();   
-    pthread_t tids_m[MATCHING_THREADS];
-    for (int i = 0; i < MATCHING_THREADS; ++i)
+    // Consumer threads
+    pthread_t tids[CONSUMER_THREADS];
+    for (int i = 0; i < CONSUMER_THREADS; ++i)
     {
         // Create attributes
         pthread_attr_t attr;
         pthread_attr_init(&attr);
-        auto thread_err = pthread_create(&tids_m[i], NULL, matching_clusters, &queues);
-        if (thread_err != 0)
-                printf("\nCan't create thread :[%s]", strerror(thread_err));
+        pthread_create(&tids[i], &attr, consumer, &queues[i]);
     } 
 
+    /* Here main thread could do normalization calculation 
+        while cluster distance is calculated in child threads */
 
 
-    // Join matching threads 
-    for (int i = 0; i < MATCHING_THREADS; ++i)
+    // Join threads when finished
+    pthread_join(tprod, NULL);    
+    for (int i = 0; i < CONSUMER_THREADS; ++i)
     {
-        pthread_join(tids_m[i], NULL);    
-    }
-
-    std::cout << "Number of elements per queue: " << std::endl;
-    for (int i = 0; i < COUNTING_THREADS; ++i)
-    {
-        std::cout << queues[i].index << '\t' << queues[i].fidx << std::endl;
-    }
-
-
-    auto t2_matching = std::chrono::high_resolution_clock::now();   
-    auto matching_waittime = std::chrono::duration_cast<std::chrono::milliseconds>
-                        (t2_matching-t1_matching).count();
-    std::cerr << "Matching processing time: "<< matching_waittime << std::endl;
-    //---------------------------------------------------------------------------------------------------------
-
-    // Counting Threads
-    auto t1_counting = std::chrono::high_resolution_clock::now();   
-
-    pthread_t tids_c[COUNTING_THREADS];
-    for (int i = 0; i < COUNTING_THREADS; ++i)
-    {
-        // Create attributes
-        pthread_attr_t attr;
-        pthread_attr_init(&attr);
-        auto thread_err = pthread_create(&tids_c[i], NULL, counting, &queues[i]);
-        if (thread_err != 0)
-            printf("\nCan't create thread :[%s]", strerror(thread_err));
-
-    } 
-
-    // Join counting threads
-    for (int i = 0; i < COUNTING_THREADS; ++i)
-    {
-        pthread_join(tids_c[i], NULL);    
+        pthread_join(tids[i], NULL);    
     }
     
-    auto t2_counting = std::chrono::high_resolution_clock::now();   
-    auto counting_waittime = std::chrono::duration_cast<std::chrono::milliseconds>
-                        (t2_counting-t1_counting).count();
-    std::cerr << "Counting processing time: "<< counting_waittime << std::endl;
-
+    auto t2_processing = std::chrono::high_resolution_clock::now();   
+    auto processing_waittime = std::chrono::duration_cast<std::chrono::milliseconds>
+                        (t2_processing-t1_processing).count();
+    cerr << "Processing time: "<< processing_waittime << endl;
     //---------------------------------------------------------------------------------------------------------
 
-    std::cerr << "Total processing time: "<< matching_waittime + counting_waittime << std::endl;
+
+    tend = time(NULL); 
+    time_taken=difftime(tend, tstart);
+    cerr << "\nProcessing time_taken " << time_taken << endl; 
     
-    // PRINT OUTPUT
-    std::cout << "Writing to output... ";
+    // PRINT MAP
+    std::cout << "Writing to output.. " << std::endl;
     auto outfile = std::fstream("outfile.bin", std::ios::out | std::ios::binary);
-    for (int tid = 0; tid < COUNTING_THREADS; ++tid)
+    const std::size_t lines = 100000;
+    const std::size_t bytes = 3 * sizeof(unsigned int) * lines; // size in Bytes
+    unsigned int *p = new unsigned int[3*lines];
+    for (int tidx = 0; tidx < CONSUMER_THREADS; ++tidx)
     {
-        for (auto & elem: vec_frequency[tid]) 
-        {
-            outfile.write((char*)&elem, sizeof(ClusterPairs));
-        }
+        std::size_t j = 0;
+        std::size_t i = 0;
+        // std::size_t tot = 0;
+
+    
+        for (auto itr_out = vec_maps[tidx].cbegin(); itr_out != vec_maps[tidx].cend(); ++itr_out) { 
+            for (auto itr_in = itr_out->second.cbegin(); itr_in != itr_out->second.cend(); ++itr_in, ++j, ++i)
+            {   
+                // ++tot;
+                p[3*j] = itr_out->first;
+                p[3*j+1] = itr_in->first;
+                p[3*j+2] = itr_in->second;
+                if(j == lines-1)
+                {
+                    outfile.write((char*)p, bytes);
+                    j = -1; // so that j starts from 0 in the next iteration
+                }
+            }   
+        } 
+        outfile.write((char*)p, 3*sizeof(unsigned int)*j);
     }
 
+    // cerr << tot << endl;
     outfile.close();
-    std::cout << "done " << std::endl;
+    delete[] p;
     delete[] bufferA;
     delete[] bufferB;
 
+    
      
     return 0;
 
