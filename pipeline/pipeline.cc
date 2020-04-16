@@ -66,7 +66,7 @@ int main(int argc, char** argv)
     std::cout << '\n';  
     
 
-    std::ofstream out("BIG2_10e5.bin", std::ios::binary);
+    std::ofstream out(output, std::ios::binary);
     std::cout << "sizeof SmallCA: " << sizeof(SmallCA) << std::endl;
     out.write((char*)clusterAlign, bufferLen*sizeof(SmallCA));
     out.close();

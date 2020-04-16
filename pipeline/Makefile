@@ -28,10 +28,6 @@ run:$(EXE)
 # 	input is a txt sorted wrt qID. -o flag gives an output
 	./$(EXE) ../data_qsize/BIG1_10e5_qID.clean
 
-# this is a minimsl run (parameter 0.01 means 0.01 hours) that starts from the recovery id 0 (i.e. from the very beginnig of the file)
-
-
-
 clean:
 	rm -rf *~ $(OBJS) *.x
 
