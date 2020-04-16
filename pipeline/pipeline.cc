@@ -3,7 +3,8 @@
 #include <unistd.h> // getopt
 
 #include "smallca.h"
-
+#include "normalization.h"
+#include "ascii2binary.h"
 
 int main(int argc, char** argv)
 {
@@ -50,15 +51,19 @@ int main(int argc, char** argv)
     // load txt into SmallCA[] buffer: 
     //  qID*100 + center ; qSize included
     load_txt(input, clusterAlign, bufferLen);
-    // for (int i = 0; i < 10; ++i){printSCA(clusterAlign[i]);}
+    for (int i = 0; i < 10; ++i){printSCA(clusterAlign[i]);}
+    std::cout << '\n';  
+
 
     // calculate qSize values
     compute_cluster_size(clusterAlign, bufferLen);
     for (int i = 0; i < 10; ++i){printSCA(clusterAlign[i]);}
+    std::cout << '\n';  
 
     // sort back wrt sID
     radix_sort((unsigned char*) clusterAlign, bufferLen, 16, 4, 8);
     for (int i = 0; i < 10; ++i){printSCA(clusterAlign[i]);}
+    std::cout << '\n';  
     
 
     std::ofstream out("BIG2_10e5.bin", std::ios::binary);

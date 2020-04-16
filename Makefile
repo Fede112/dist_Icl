@@ -34,11 +34,15 @@ run:$(EXE)
 clean:
 	rm -rf *~ $(OBJS) *.x
 	$(MAKE) $(MFLAGS) clean  -C ./aux/
+	$(MAKE) $(MFLAGS) clean  -C ./pipeline/
 
 
 
 aux:
 	$(MAKE) $(MFLAGS) -C ./aux/
+
+pipeline:
+	$(MAKE) $(MFLAGS) -C ./pipeline/
 
 
 
@@ -59,4 +63,4 @@ output: $(EXE) aux
 	@rm -f ./test/out.txt outfile.bin
 	@echo "Output test passed!"
 
-.PHONY: default clean aux run debug test
+.PHONY: default clean aux pipeline run debug test

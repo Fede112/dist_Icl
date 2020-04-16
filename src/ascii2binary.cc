@@ -1,5 +1,6 @@
 #include <sstream> // istringstream
 #include <fstream>
+#include <algorithm>
 
 #include "ascii2binary.h"
 
