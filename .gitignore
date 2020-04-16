@@ -7,7 +7,7 @@
 *.txt
 outfile*
 ./data/
-./data_size/
+./data_qsize/
 
 type_test.cc
 # binary_test.cc

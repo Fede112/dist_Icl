@@ -8,7 +8,6 @@
 int main(int argc, char** argv)
 {
 
-
     ////////////////////////////////////////////////////////////////////////
     int opt;
     std::string output{"ouput.bin"}; 

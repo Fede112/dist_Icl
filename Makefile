@@ -2,24 +2,16 @@
 SHELL=/bin/sh
 
 CXX=g++
-# CFLAGS= -Wall -Wextra -O3 -ffast-math -fexpensive-optimizations -msse3 
-CXXFLAGS= -O2 -std=c++14 -I ./include/ -Wall
-LDFLAGS= # -lfmt
+# CXXFLAGS= -Wall -Wextra -O3 -ffast-math -fexpensive-optimizations -msse3 
+CXXFLAGS= -O3 -std=c++14 -I ./include/ -Wall
+LDFLAGS= -lpthread
 DEBUG= -g -ggdb
 
+EXE=dist_Icl.x
+OBJS=dist_Icl.o src/normalization.o
 
-OBJS=dist_Icl_threads.o
-EXE=dist_Icl_threads.x
 default: $(EXE)
 
-
-
-# thread: 
-thread:	OBJS=dist_Icl_threads.o
-thread: LDFLAGS=-lpthread
-thread: dist_Icl_threads.x
-
-dist_Icl_threads.o: include/smallca.h
 
 $(EXE): $(OBJS)
 	$(CXX) $^ -o $@  $(LDFLAGS)
@@ -28,22 +20,32 @@ $(EXE): $(OBJS)
 	$(CXX) -c $< -o $@  $(CXXFLAGS) 
 
 
+dist_Icl.o: include/smallca.h include/normalization.h
+src/normalization.o: include/smallca.h include/normalization.h
+
+
+
+run:$(EXE)
+	./$(EXE) ./data_qsize/BIG1_10e5.bin  ./data_qsize/BIG2_10e5.bin
+# this is a minimsl run (parameter 0.01 means 0.01 hours) that starts from the recovery id 0 (i.e. from the very beginnig of the file)
+
+
+
 clean:
 	rm -rf *~ $(OBJS) *.x
 	$(MAKE) $(MFLAGS) clean  -C ./aux/
 
+
+
 aux:
 	$(MAKE) $(MFLAGS) -C ./aux/
 
-run:$(EXE)
-	./$(EXE) ./data/BIG1_10e5.bin  ./data/BIG2_10e5.bin 0 0.02
-# this is a minimsl run (parameter 0.01 means 0.01 hours) that starts from the recovery id 0 (i.e. from the very beginnig of the file)
 
 
 debug: CXXFLAGS += $(DEBUG)
 debug: default
 debug: 
-	valgrind ./${EXE} ./data/BIG1_10e4.bin  ./data/BIG2_10e4.bin 0 0.02
+	valgrind ./${EXE} ./data_qsize/BIG1_10e4.bin  ./data_qsize/BIG2_10e4.bin
 
 # TESTS:
 
