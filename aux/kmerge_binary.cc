@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 #include <iterator>
 #include <algorithm>
 #include <vector>
@@ -8,6 +9,8 @@
 #include <math.h>       /* log2 */
 #include <unistd.h> // getopt
  
+#include "smallca.h"
+
 
 template <typename Iterator, typename Comparator = std::less<>>
 void kmerge_pow2(std::vector<Iterator> & indexes, Comparator cmp = Comparator())
@@ -40,7 +43,6 @@ void kmerge_pow2(std::vector<Iterator> & indexes, Comparator cmp = Comparator())
     return;
 }
 
-// template <typename Iterator, typename Compare = std::less<typename std::iterator_traits<Iterator>::value_type> >
 template <typename Iterator, typename Comparator = std::less<>>
 void kmerge(std::vector<Iterator> & partIndexes, Comparator cmp = Comparator() )
 {
@@ -72,7 +74,7 @@ void kmerge(std::vector<Iterator> & partIndexes, Comparator cmp = Comparator() )
             kmerge_pow2(localPartIndexes, cmp);    
         }
         
-        kmerge(mergedPartIndexes);
+        kmerge(mergedPartIndexes, cmp);
     }
     
 }
@@ -81,15 +83,15 @@ void kmerge(std::vector<Iterator> & partIndexes, Comparator cmp = Comparator() )
 int main(int argc, char *argv[])
 {
     int opt;
-    std::string outFileName;
-    std::vector<std::string> fileNames;
+    std::string outFilename;
+    std::vector<std::string> filenames;
 
     while ((opt = getopt(argc, argv, "ho:")) != -1) 
     {
         switch (opt) 
         {
         case 'o':
-            outFileName = optarg;
+            outFilename = optarg;
             break;
         case 'h':
             // go to default
@@ -109,71 +111,51 @@ int main(int argc, char *argv[])
     while(optind < argc)
     {
         printf("name argument = %s\n", argv[optind]);
-        fileNames.push_back(argv[optind]);
+        filenames.push_back(argv[optind]);
         ++optind;
     }
-
     
-    // vector<ifstream> files; 
-    // uint64_t totalBytes{0};
-    // for (const auto & fileName: fileNames)
-    // {
-    //     std::ifstream file (fileName, std::ifstream::binary);
-    //     if(file.is_open())
-    //     {
-    //         file.seekg (0, file.end);
-    //         totalBytes += file.tellg();
-    //         file.seekg (0, file.beg);
-    //         files.push_back(file); 
-    //     }
-    //     else{std::cerr << "Cannot open file: " << fileName << "\n";}
-    // }
-    
-    // char * buffer = new char [totalBytes];
-    
-    
-
-
-    // fill the vectors with random numbers
-    std::random_device rd;
-    std::mt19937 mt(rd());
-    std::uniform_int_distribution<> dis(0, 2900);
- 
-    std::vector<int> v1(2900);
-    std::vector<std::vector<int>::iterator> indexes;
-    std::generate(v1.begin(), v1.end(), std::bind(dis, std::ref(mt)));
-
-    int k = 29;
-    for (int i = 0; i <= k; ++i)
+    std::vector<SmallCA*> indexes; 
+    std::vector<std::ifstream> files; 
+    std::vector<uint64_t> fileLines; 
+    uint64_t bytes{0};
+    uint64_t lines{0};
+    uint64_t totalLines{0};
+    for (const auto & filename: filenames)
     {
-        indexes.push_back(v1.begin()+i*100);
+        std::cout << filename << std::endl;
+        std::ifstream file (filename, std::ifstream::binary);
+        if(file.is_open())
+        {
+            file.seekg (0, file.end);
+            bytes = file.tellg();
+            lines = bytes/sizeof(SmallCA);
+            std::cout << lines << std::endl;
+            fileLines.push_back(lines);
+            totalLines += lines;
+            file.seekg (0, file.beg);
+            files.push_back(std::move(file));
+        }
+        else{std::cerr << "Cannot open file: " << filename << "\n";}
     }
     
-    for (int i = 0; i < k; ++i)
+    SmallCA * buffer = new SmallCA [totalLines];
+    
+    indexes.push_back(buffer);
+    auto subBuffer = buffer;
+    for (int i = 0; i < files.size(); ++i)
     {
-     std::sort(indexes[i], indexes[i+1]);
+        files[i].read ((char*) subBuffer, sizeof(SmallCA)*fileLines[i]);
+        subBuffer += fileLines[i];
+        indexes.push_back(subBuffer);
     }
 
-    // for (const auto & elem: v1)
-    // {
-    //     std::cout << elem << std::endl;
-    // }
-
-
-    kmerge(indexes);
+    kmerge(indexes, compare_sID());
 
     
-    for (const auto & elem: v1)
-    {
-        std::cout << elem << std::endl;
-    }
-
-    std::cout << std::is_sorted(v1.begin(), v1.end()) << std::endl;
-
+    std::cout << std::is_sorted(buffer, buffer+totalLines, compare_sID()) << std::endl;
 
 
     return 0;
-
-
 
 }

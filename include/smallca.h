@@ -37,6 +37,24 @@ struct compare_qID
 };
 
 
+
+struct compare_sID // used by auxiliary kmerge_binary
+{
+    bool operator() (const SmallCA & left, const SmallCA & right)
+    {
+        return left.sID < right.sID;
+    }
+    bool operator() (const SmallCA & left, uint32_t right)
+    {
+        return left.sID < right;
+    }
+    bool operator() (uint32_t left, const SmallCA & right)
+    {   
+        return left < right.sID;
+    }
+};
+
+
 // print a ClusteredAlignment TO STDOUT
 inline void printSCA( const SmallCA & clusterAlign) 
 {
