@@ -13,8 +13,8 @@
 #include "normalization.h"
 
 
-#define BUFFER_SIZE 2000000 // size of internal write/read buffers in queuee 
-#define CONSUMER_THREADS 3
+#define BUFFER_SIZE 1000000  // size of internal write/read buffers in queuee 
+#define CONSUMER_THREADS 8
 #define MAX_qID 2353198020
 
 // using namespace std;
@@ -111,6 +111,9 @@ void balanced_partition(std::array <uint64_t, CONSUMER_THREADS - 1> & array)
 
 void *producer(void *qs) 
 {
+
+    unsigned int total_producer_waittime{0};
+
     Queue *queues = (Queue*) qs;
     
 
@@ -191,14 +194,15 @@ void *producer(void *qs)
                             unsigned int producer_waittime;
                             producer_waittime = std::chrono::duration_cast<std::chrono::milliseconds>
                                                 (t2_producer-t1_producer).count();
-                            std::cerr << "Producer waiting time: "<< producer_waittime << std::endl;
+                            total_producer_waittime += producer_waittime;
+                            // std::cerr << "Producer waiting time: "<< producer_waittime << std::endl;
 
                             // swap
                             for (int i = 0; i < CONSUMER_THREADS; ++i)
                             {
                                 queues[i].write_buffer.swap(queues[i].read_buffer);
                                 // std::cerr << (double)queues[i].fidx/BUFFER_SIZE << " ";
-                                std::cerr << queues[i].index << " buffer: "<< queues[i].fidx << std::endl;
+                                // std::cerr << queues[i].index << " buffer: "<< queues[i].fidx << std::endl;
                                 queues[i].fill = queues[i].fidx;
                                 queues[i].fidx = 0;
                             }
@@ -222,7 +226,7 @@ void *producer(void *qs)
     for (int i = 0; i < CONSUMER_THREADS; ++i)
     {
         queues[i].write_buffer.swap(queues[i].read_buffer);
-        std::cerr << queues[i].index << " buffer: "<< queues[i].fidx << std::endl;
+        // std::cerr << queues[i].index << " buffer: "<< queues[i].fidx << std::endl;
         queues[i].fill = queues[i].fidx;
         queues[i].fidx = 0;
     }
@@ -230,6 +234,7 @@ void *producer(void *qs)
     for(sem_t &sr : sem_read){sem_post(&sr);}
 
     pthread_mutex_lock(&done_lock);
+    std::cout << "total producer waittime: " << total_producer_waittime << std::endl;
     done = 1;
     pthread_mutex_unlock(&done_lock);
     pthread_exit(NULL);
@@ -399,6 +404,12 @@ int main(int argc, char** argv) {
     delete[] bufferA;
     delete[] bufferB;
 
+
+    auto t_output = std::chrono::high_resolution_clock::now();   
+    auto total_waittime = std::chrono::duration_cast<std::chrono::milliseconds>
+                        (t_output-t1_processing).count();
+    std::cerr << "Total time (ms): "<< total_waittime << std::endl;
+    
     
      
     return 0;
