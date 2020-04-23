@@ -14,13 +14,26 @@
 #include "concurrentqueue.h"
 
 
-#define BUFFER_SIZE 2000000 // size of internal write/read buffers in queuee 
-#define LOCAL_BUFFER_SIZE 100000
-#define CONSUMER_THREADS 5
+#define LOCAL_BUFFER_SIZE 100
+#define CONSUMER_THREADS 3
 #define MAX_qID 2353198020
 
-
+using namespace moodycamel;
 // using namespace std;
+
+//---------------------------------------------------------------------------------------------------------
+// GLOBAL TYPES
+//---------------------------------------------------------------------------------------------------------
+
+struct MatchedPair
+{
+    uint32_t ID1;
+    uint32_t ID2;
+    double distance;
+
+    MatchedPair(): ID1(0), ID2(0), distance(0) {}
+    MatchedPair(uint32_t id1, uint32_t id2, double d): ID1(id1), ID2(id2), distance(d) {}
+};
 
 typedef std::map<uint32_t, std::map<uint32_t, double> >  map2_t;
 
@@ -69,35 +82,6 @@ double dist(const SmallCA * i, const SmallCA * j){
 // THREADS METHODS
 //---------------------------------------------------------------------------------------------------------
 
-struct MatchedPair
-{
-    uint32_t ID1;
-    uint32_t ID2;
-    double distance;
-
-    MatchedPair(): ID1(0), ID2(0), distance(0) {}
-    MatchedPair(uint32_t id1, uint32_t id2, double d): ID1(id1), ID2(id2), distance(d) {}
-};
-
-// Struct to pass to pthread functions
-struct Queue
-{
-    uint32_t index;
-    uint64_t fill;
-    uint64_t fidx;
-    uint64_t buffer_size;
-    // using unique ptr to buffer. Good implementation?
-    std::unique_ptr<MatchedPair []> write_buffer;
-    std::unique_ptr<MatchedPair []> read_buffer;
-    
-                            
-    Queue():index(0),fill(0), fidx(0), buffer_size(0){}
-    Queue(uint32_t i, uint64_t f, uint64_t fi, uint64_t bs): 
-    index(i), fill(f), fidx(fi), buffer_size(bs), write_buffer{new MatchedPair [bs]}, read_buffer{new MatchedPair [bs]}
-    {}
-
-};
-
 
 void balanced_partition(std::array <uint64_t, CONSUMER_THREADS - 1> & array)
 // calculate the qIDs to equally distribute the pairs qID1-qID2 in each thread.
@@ -114,15 +98,15 @@ void balanced_partition(std::array <uint64_t, CONSUMER_THREADS - 1> & array)
 
 void *producer(void *qs) 
 {
-    moodycamel::ConcurrentQueue<MatchedPair> *queues = (moodycamel::ConcurrentQueue<MatchedPair>*) qs;
+    ConcurrentQueue<MatchedPair> *queues = (ConcurrentQueue<MatchedPair>*) qs;
     
-
-
     // internal buffers
+
     uint64_t localBufferSize {LOCAL_BUFFER_SIZE}; 
     uint64_t localBufferIndex[CONSUMER_THREADS] = {0};
     MatchedPair localBuffer[CONSUMER_THREADS][localBufferSize] = {MatchedPair()};
-
+    
+    
     SmallCA * alA = (SmallCA *) bufferA;  //pointer to SmallCA to identify bufferA, i.e. the main file
     SmallCA * alB = (SmallCA *) bufferB; //pointer to SmallCA to bufferB, secondary file
 
@@ -185,8 +169,6 @@ void *producer(void *qs)
                             }
                         }
                         
-                        
-                            
                         localBuffer[tidx][localBufferIndex[tidx]] = pair;
                         ++localBufferIndex[tidx];
                         if (localBufferIndex[tidx] >= localBufferSize)
@@ -202,7 +184,6 @@ void *producer(void *qs)
     }
 
     pthread_mutex_lock(&doneLock);
-    std::cout << "DONE!" << std::endl;
     done = 1;
     pthread_mutex_unlock(&doneLock);
     pthread_exit(NULL);
@@ -211,13 +192,13 @@ void *producer(void *qs)
 
 void *consumer(void *q) 
 {
-    moodycamel::ConcurrentQueue<MatchedPair> * queue = (moodycamel::ConcurrentQueue<MatchedPair>*) q;
+    ConcurrentQueue<MatchedPair> * queue = (ConcurrentQueue<MatchedPair>*) q;
 
     pthread_mutex_lock(&rankLock);    
     int rank = rankCount;
     ++rankCount;
     pthread_mutex_unlock(&rankLock);
-    std::cerr << "Hi from consumer thread: " << rank << std::endl;
+    // std::cerr << "Hi from consumer thread: " << rank << std::endl;
 
     while(1)
     {
@@ -257,6 +238,8 @@ void *consumer(void *q)
 
 
 // USAGE:  ./a.out  input1 input2 recovery maxhours > output
+
+
 
 int main(int argc, char** argv) {
 
@@ -308,8 +291,7 @@ int main(int argc, char** argv) {
 
     
     // Initialize queues
-    std::array<moodycamel::ConcurrentQueue<MatchedPair>, CONSUMER_THREADS> queues;
-    
+    std::array<ConcurrentQueue<MatchedPair>, CONSUMER_THREADS> queues;
 
     // Define qIDs balanced partition per thread
     balanced_partition(qIDs_partition);
@@ -336,11 +318,19 @@ int main(int argc, char** argv) {
 
 
     // Join threads when finished
-    pthread_join(tprod, NULL);    
+    pthread_join(tprod, NULL);
+
+    auto t_producer = std::chrono::high_resolution_clock::now();   
     for (int i = 0; i < CONSUMER_THREADS; ++i)
     {
         pthread_join(tids[i], NULL);    
     }
+
+    auto t_consumer = std::chrono::high_resolution_clock::now();   
+    auto diff_cons_prod = std::chrono::duration_cast<std::chrono::milliseconds>
+                        (t_consumer-t_producer).count();
+    std::cerr << "Difference consumer-producer (ms): "<< diff_cons_prod << std::endl;
+     
     
     auto t2_processing = std::chrono::high_resolution_clock::now();   
     auto processing_waittime = std::chrono::duration_cast<std::chrono::milliseconds>
@@ -367,7 +357,12 @@ int main(int argc, char** argv) {
     }
 
     outfile.close();
-    std::cout << "done" << std::endl;
+
+    auto t3_output = std::chrono::high_resolution_clock::now();   
+    auto total_time = std::chrono::duration_cast<std::chrono::milliseconds>
+                        (t3_output-t1_processing).count();
+    std::cerr << "Total time (ms): "<< total_time << std::endl;
+
     delete[] bufferA;
     delete[] bufferB;
 
