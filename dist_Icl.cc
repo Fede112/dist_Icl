@@ -11,11 +11,14 @@
 
 #include "smallca.h"
 #include "normalization.h"
+#include "concurrentqueue.h"
 
 
 #define BUFFER_SIZE 2000000 // size of internal write/read buffers in queuee 
-#define CONSUMER_THREADS 3
+#define LOCAL_BUFFER_SIZE 100000
+#define CONSUMER_THREADS 5
 #define MAX_qID 2353198020
+
 
 // using namespace std;
 
@@ -28,13 +31,13 @@ typedef std::map<uint32_t, std::map<uint32_t, double> >  map2_t;
 char * bufferA{NULL}, * bufferB{NULL};
 uint64_t linesA{0}, linesB{0};
 
-// Semaphores (TODO: cleaner implementation with CV)
-std::array<sem_t, CONSUMER_THREADS> sem_write;
-std::array<sem_t, CONSUMER_THREADS> sem_read;
-
 // global flag to terminate consumers
 bool done{0};
-pthread_mutex_t done_lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t doneLock = PTHREAD_MUTEX_INITIALIZER;
+
+// consumer rank
+int rankCount{0};
+pthread_mutex_t rankLock = PTHREAD_MUTEX_INITIALIZER;
 
 // array of map2_t for consumers
 std::vector<map2_t> vec_maps(CONSUMER_THREADS);
@@ -111,8 +114,14 @@ void balanced_partition(std::array <uint64_t, CONSUMER_THREADS - 1> & array)
 
 void *producer(void *qs) 
 {
-    Queue *queues = (Queue*) qs;
+    moodycamel::ConcurrentQueue<MatchedPair> *queues = (moodycamel::ConcurrentQueue<MatchedPair>*) qs;
     
+
+
+    // internal buffers
+    uint64_t localBufferSize {LOCAL_BUFFER_SIZE}; 
+    uint64_t localBufferIndex[CONSUMER_THREADS] = {0};
+    MatchedPair localBuffer[CONSUMER_THREADS][localBufferSize] = {MatchedPair()};
 
     SmallCA * alA = (SmallCA *) bufferA;  //pointer to SmallCA to identify bufferA, i.e. the main file
     SmallCA * alB = (SmallCA *) bufferB; //pointer to SmallCA to bufferB, secondary file
@@ -175,95 +184,67 @@ void *producer(void *qs)
                                 break;
                             }
                         }
-                                               
-                        if (queues[tidx].fidx  + 1 < queues[tidx].buffer_size)
+                        
+                        
+                            
+                        localBuffer[tidx][localBufferIndex[tidx]] = pair;
+                        ++localBufferIndex[tidx];
+                        if (localBufferIndex[tidx] >= localBufferSize)
                         {
-                            queues[tidx].write_buffer[queues[tidx].fidx] = pair;
-                            queues[tidx].fidx+=1;
+                            queues[tidx].enqueue_bulk(localBuffer[tidx], localBufferSize);
+                            localBufferIndex[tidx]=0;
                         }
-                        else
-                        {
-                            // wait
-                            auto t1_producer = std::chrono::high_resolution_clock::now();   
-                            for(sem_t &sw : sem_write){sem_wait(&sw);}
-                            auto t2_producer = std::chrono::high_resolution_clock::now();
-
-                            unsigned int producer_waittime;
-                            producer_waittime = std::chrono::duration_cast<std::chrono::milliseconds>
-                                                (t2_producer-t1_producer).count();
-                            std::cerr << "Producer waiting time: "<< producer_waittime << std::endl;
-
-                            // swap
-                            for (int i = 0; i < CONSUMER_THREADS; ++i)
-                            {
-                                queues[i].write_buffer.swap(queues[i].read_buffer);
-                                // std::cerr << (double)queues[i].fidx/BUFFER_SIZE << " ";
-                                std::cerr << queues[i].index << " buffer: "<< queues[i].fidx << std::endl;
-                                queues[i].fill = queues[i].fidx;
-                                queues[i].fidx = 0;
-                            }
-
-                            // add missing element in new buffer
-                            queues[tidx].write_buffer[queues[tidx].fidx] = pair;
-                            queues[tidx].fidx+=1;
-                            // sem_post()
-                            for(sem_t &sr : sem_read){sem_post(&sr);}
-                        }
+                        
                     }                    
                 }
             }            
         }   
     }
 
-    // wait
-    for(sem_t &sw : sem_write){sem_wait(&sw);}
-
-    // swap
-    for (int i = 0; i < CONSUMER_THREADS; ++i)
-    {
-        queues[i].write_buffer.swap(queues[i].read_buffer);
-        std::cerr << queues[i].index << " buffer: "<< queues[i].fidx << std::endl;
-        queues[i].fill = queues[i].fidx;
-        queues[i].fidx = 0;
-    }
-    // sem_post()
-    for(sem_t &sr : sem_read){sem_post(&sr);}
-
-    pthread_mutex_lock(&done_lock);
+    pthread_mutex_lock(&doneLock);
+    std::cout << "DONE!" << std::endl;
     done = 1;
-    pthread_mutex_unlock(&done_lock);
+    pthread_mutex_unlock(&doneLock);
     pthread_exit(NULL);
 
 }
 
 void *consumer(void *q) 
 {
-    Queue * queue = (Queue*) q;
-    // std::cerr << "Hi from consumer thread: " << queue->index << std::endl;
+    moodycamel::ConcurrentQueue<MatchedPair> * queue = (moodycamel::ConcurrentQueue<MatchedPair>*) q;
+
+    pthread_mutex_lock(&rankLock);    
+    int rank = rankCount;
+    ++rankCount;
+    pthread_mutex_unlock(&rankLock);
+    std::cerr << "Hi from consumer thread: " << rank << std::endl;
 
     while(1)
     {
-        // wait for sem_read
-        sem_wait(&sem_read[queue->index]);
 
-        // read entire buffer
-        for (uint64_t i = 0; i < queue->fill; ++i)
-        {
-            vec_maps[queue->index][ queue->read_buffer[i].ID1 ][ queue->read_buffer[i].ID2 ] += queue->read_buffer[i].distance;
-        }
+        MatchedPair pairs[LOCAL_BUFFER_SIZE];
 
-        // sem_post write
-        sem_post(&sem_write[queue->index]);
+        if (queue->try_dequeue_bulk(pairs, LOCAL_BUFFER_SIZE))
+            for (int i = 0; i < LOCAL_BUFFER_SIZE; ++i)
+            {
+                vec_maps[rank][ pairs[i].ID1 ][ pairs[i].ID2 ] += pairs[i].distance;
+            }
 
-
-        // exit routine condition
-        pthread_mutex_lock(&done_lock);
+        pthread_mutex_lock(&doneLock);
         if (done == 1)
         {
-            pthread_mutex_unlock(&done_lock);
+            while (queue->try_dequeue_bulk(pairs, LOCAL_BUFFER_SIZE))
+            {
+                for (int i = 0; i < LOCAL_BUFFER_SIZE; ++i)
+                {
+                    vec_maps[rank][ pairs[i].ID1 ][ pairs[i].ID2 ] += pairs[i].distance;
+                }
+                
+            }
+            pthread_mutex_unlock(&doneLock);
             pthread_exit(NULL);
         }
-        pthread_mutex_unlock(&done_lock);
+        pthread_mutex_unlock(&doneLock);
 
     }
 
@@ -278,11 +259,6 @@ void *consumer(void *q)
 // USAGE:  ./a.out  input1 input2 recovery maxhours > output
 
 int main(int argc, char** argv) {
-
-
-    // Initialize semaphores
-    for(sem_t &sw : sem_write){sem_init(&sw, 0, 1);}
-    for(sem_t &sr : sem_read){sem_init(&sr, 0, 0);}
 
 
     // OPEN THE TWO FILES, READ BOTH'S FIST LINE, FIND SMALLEST sID    
@@ -332,11 +308,7 @@ int main(int argc, char** argv) {
 
     
     // Initialize queues
-    std::array<Queue, CONSUMER_THREADS> queues;
-    for (int i = 0; i < CONSUMER_THREADS; ++i)
-    {
-        queues[i] = Queue(i,0,0,BUFFER_SIZE);
-    }
+    std::array<moodycamel::ConcurrentQueue<MatchedPair>, CONSUMER_THREADS> queues;
     
 
     // Define qIDs balanced partition per thread
