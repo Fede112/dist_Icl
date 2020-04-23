@@ -5,6 +5,7 @@
 #include <memory>
 #include <vector>
 #include <map>
+#include <unordered_map>
 
 #include <pthread.h>
 #include <semaphore.h>
@@ -35,7 +36,9 @@ struct MatchedPair
     MatchedPair(uint32_t id1, uint32_t id2, double d): ID1(id1), ID2(id2), distance(d) {}
 };
 
-typedef std::map<uint32_t, std::map<uint32_t, double> >  map2_t;
+typedef std::unordered_map<uint32_t, std::unordered_map<uint32_t, double > >  map_t;
+
+
 
 //---------------------------------------------------------------------------------------------------------
 // GLOBAL VARIABLES
@@ -53,7 +56,7 @@ int rankCount{0};
 pthread_mutex_t rankLock = PTHREAD_MUTEX_INITIALIZER;
 
 // array of map2_t for consumers
-std::vector<map2_t> vec_maps(CONSUMER_THREADS);
+std::vector<map_t> vec_maps(CONSUMER_THREADS);
 
 // qIDs_partition array for a balanced load among threads. You need (n-1) points to generate n partitions.
 std::array <uint64_t, CONSUMER_THREADS-1> qIDs_partition; 
@@ -183,7 +186,6 @@ void *producer(void *qs)
         }   
     }
 
-
     for (int i = 0; i < CONSUMER_THREADS; ++i)
     {
         for (int j = localBufferIndex[i]; j < LOCAL_BUFFER_SIZE; ++j)
@@ -191,7 +193,7 @@ void *producer(void *qs)
             localBuffer[i][j]=MatchedPair();
         }
         std::cout << localBufferIndex[i] << std::endl;
-        queues[i].enqueue_bulk(localBuffer[i], LOCAL_BUFFER_SIZE);
+        queues[i].enqueue_bulk(localBuffer[i], localBufferIndex[i]);
     }
     
 
@@ -220,7 +222,9 @@ void *consumer(void *q)
         if (queue->try_dequeue_bulk(pairs, LOCAL_BUFFER_SIZE))
             for (int i = 0; i < LOCAL_BUFFER_SIZE; ++i)
             {
-                vec_maps[rank][ pairs[i].ID1 ][ pairs[i].ID2 ] += pairs[i].distance;
+                // uint64_t key = (((uint64_t)pairs[i].ID1) << 32 ) | pairs[i].ID2;
+                // vec_maps[rank][ key ] += pairs[i].distance;
+                vec_maps[rank][ pairs[i].ID1 ] [pairs[i].ID2]+= pairs[i].distance;
             }
 
         pthread_mutex_lock(&doneLock);
@@ -230,7 +234,8 @@ void *consumer(void *q)
             {
                 for (int i = 0; i < LOCAL_BUFFER_SIZE; ++i)
                 {
-                    vec_maps[rank][ pairs[i].ID1 ][ pairs[i].ID2 ] += pairs[i].distance;
+                    // uint64_t key = (((uint64_t)pairs[i].ID1) << 32 ) | pairs[i].ID2;
+                    vec_maps[rank][ pairs[i].ID1 ] [pairs[i].ID2]+= pairs[i].distance;
                 }
                 
             }
