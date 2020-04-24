@@ -156,6 +156,15 @@ int main(int argc, char *argv[])
     std::cout << std::is_sorted(buffer, buffer+totalLines, compare_sID()) << std::endl;
 
 
+    std::cout << "Writing to output... ";
+    auto outfile = std::fstream("outfile.bin", std::ios::out | std::ios::binary);
+    MatchedPair tmp;
+
+
+    outfile.write((char*)&tmp, sizeof(SmallCA));
+    
+    outfile.close();
+
     return 0;
 
 }

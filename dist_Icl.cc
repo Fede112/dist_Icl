@@ -15,6 +15,7 @@
 
 
 #define LOCAL_BUFFER_SIZE 100
+#define PRODUCER_THREADS 1
 #define CONSUMER_THREADS 8
 #define MAX_qID 2353198020
 
@@ -42,15 +43,19 @@ typedef std::map<uint32_t, std::map<uint32_t, double> >  map2_t;
 //---------------------------------------------------------------------------------------------------------
 
 char * bufferA{NULL}, * bufferB{NULL};
-uint64_t linesA{0}, linesB{0};
+uint64_t totalLinesA{0}, totalLinesB{0};
 
 // global flag to terminate consumers
-bool done{0};
+uint32_t done{0};
 pthread_mutex_t doneLock = PTHREAD_MUTEX_INITIALIZER;
 
+// producer rank
+uint32_t pRankCount{0};
+pthread_mutex_t pRankLock = PTHREAD_MUTEX_INITIALIZER;
+
 // consumer rank
-int rankCount{0};
-pthread_mutex_t rankLock = PTHREAD_MUTEX_INITIALIZER;
+uint32_t cRankCount{0};
+pthread_mutex_t cRankLock = PTHREAD_MUTEX_INITIALIZER;
 
 // array of map2_t for consumers
 std::vector<map2_t> vec_maps(CONSUMER_THREADS);
@@ -94,14 +99,68 @@ void balanced_partition(std::array <uint64_t, CONSUMER_THREADS - 1> & array)
     return;
 }
 
+// void files_partition(uint64_t (&partIndices)[PRODUCER_THREADS+1][2])
+void files_partition(std::array<std::array<uint64_t, 2>, PRODUCER_THREADS> & partIndices, SmallCA* bufferA, SmallCA* bufferB)
+// finds the indices of the partitions for bufferA and bufferB
+{
+
+    // Index 0: bufferA and Index 1: bufferB
+    SmallCA * alignment[2] = {bufferA, bufferB};
+    
+    uint64_t partSize[2] = {totalLinesA/PRODUCER_THREADS, totalLinesB/PRODUCER_THREADS};
+    uint64_t partReminder[2] = {totalLinesA%PRODUCER_THREADS, totalLinesB%PRODUCER_THREADS};
+    
+    // uniform partition A
+    partIndices[0][0] = 0;
+    partIndices[0][1] = 0;
+    for (uint32_t i = 1; i <=  PRODUCER_THREADS; ++i)
+    {
+        for (uint32_t f = 0; f < 2; ++f)
+        {
+            partIndices[i][f] = partSize[f] + partIndices[i-1][f];
+            if (i <= partReminder[f]) {partIndices[i][f] +=1;}      
+        }
+    }
+
+    // shift to match sID
+    for (uint32_t i = 1; i <  PRODUCER_THREADS; ++i)
+    {
+        // we use bufferA for picking the reference sID
+        auto sValue = (alignment[0] + partIndices[i][0])->sID;
+        
+        for (uint32_t f = 0; f < 2; ++f)
+        {
+            auto start = std::lower_bound(alignment[f] + partIndices[i-1][f], alignment[f] + partIndices[i+1][f], sValue, compare_sID());
+            partIndices[i][f] -= (alignment[f] + partIndices[i][f]) - start; 
+        }
+        
+    }
+    return;
+}
 
 
 void *producer(void *qs) 
 {
-    ConcurrentQueue<MatchedPair> *queues = (ConcurrentQueue<MatchedPair>*) qs;
-    
-    // internal buffers
 
+    ConcurrentQueue<MatchedPair> *queues = (ConcurrentQueue<MatchedPair>*) qs;
+
+
+    pthread_mutex_lock(&pRankLock);
+    int rank = pRankCount;
+    ++pRankCount;
+    pthread_mutex_unlock(&pRankLock);
+
+    // find the partition of file A and B to analize
+    std::array<std::array<uint64_t, 2>, PRODUCER_THREADS> partIndices;
+    files_partition(partIndices, (SmallCA*) bufferA, (SmallCA*) bufferB);
+
+    uint64_t linesA = partIndices[rank+1][0] - partIndices[rank][0];
+    uint64_t linesB = partIndices[rank+1][1] - partIndices[rank][1];
+    
+    std::cout << "linesA: " << linesA << '\n';
+    std::cout << "linesB: " << linesB << '\n';
+
+    // internal buffers
     uint64_t localBufferSize {LOCAL_BUFFER_SIZE}; 
     uint64_t localBufferIndex[CONSUMER_THREADS] = {0};
     MatchedPair localBuffer[CONSUMER_THREADS][localBufferSize] = {MatchedPair()};
@@ -196,7 +255,7 @@ void *producer(void *qs)
     
 
     pthread_mutex_lock(&doneLock);
-    done = 1;
+    ++done;
     pthread_mutex_unlock(&doneLock);
     pthread_exit(NULL);
 
@@ -206,10 +265,10 @@ void *consumer(void *q)
 {
     ConcurrentQueue<MatchedPair> * queue = (ConcurrentQueue<MatchedPair>*) q;
 
-    pthread_mutex_lock(&rankLock);    
-    int rank = rankCount;
-    ++rankCount;
-    pthread_mutex_unlock(&rankLock);
+    pthread_mutex_lock(&cRankLock);    
+    int rank = cRankCount;
+    ++cRankCount;
+    pthread_mutex_unlock(&cRankLock);
     // std::cerr << "Hi from consumer thread: " << rank << std::endl;
 
     while(1)
@@ -224,7 +283,7 @@ void *consumer(void *q)
             }
 
         pthread_mutex_lock(&doneLock);
-        if (done == 1)
+        if (done == PRODUCER_THREADS)
         {
             while (queue->try_dequeue_bulk(pairs, LOCAL_BUFFER_SIZE))
             {
@@ -267,7 +326,7 @@ int main(int argc, char** argv) {
         bytesA = infileA.tellg();
         infileA.seekg (0, infileA.beg);
         bufferA = new char [bytesA];
-        linesA = bytesA/sizeof(SmallCA);
+        totalLinesA = bytesA/sizeof(SmallCA);
 
         std::cerr << "Reading " << bytesA << " characters... ";
         // read data as a block:
@@ -287,7 +346,7 @@ int main(int argc, char** argv) {
         bytesB = infileB.tellg();
         infileB.seekg (0, infileB.beg);
         bufferB = new char [bytesB];
-        linesB = bytesB/sizeof(SmallCA);
+        totalLinesB = bytesB/sizeof(SmallCA);
 
         std::cerr << "Reading " << bytesB << " characters... ";
         // read data as a block:
@@ -307,22 +366,30 @@ int main(int argc, char** argv) {
 
     // Define qIDs balanced partition per thread
     balanced_partition(qIDs_partition);
-
+    
     //---------------------------------------------------------------------------------------------------------
     auto t1_processing = std::chrono::high_resolution_clock::now();   
     
     // Producer thread
-    pthread_t tprod;
-    pthread_create(&tprod, NULL, producer, &queues);
-    
+    pthread_t producerThreads[PRODUCER_THREADS];
+    for (int i = 0; i < PRODUCER_THREADS; ++i)
+    {
+        // Create attributes
+        pthread_attr_t attr;
+        pthread_attr_init(&attr);
+        pthread_create(&producerThreads[i], &attr, producer, &queues);
+    }
+
+
+
     // Consumer threads
-    pthread_t tids[CONSUMER_THREADS];
+    pthread_t consumerThreads[CONSUMER_THREADS];
     for (int i = 0; i < CONSUMER_THREADS; ++i)
     {
         // Create attributes
         pthread_attr_t attr;
         pthread_attr_init(&attr);
-        pthread_create(&tids[i], &attr, consumer, &queues[i]);
+        pthread_create(&consumerThreads[i], &attr, consumer, &queues[i]);
     } 
 
     /* Here main thread could do normalization calculation 
@@ -330,12 +397,16 @@ int main(int argc, char** argv) {
 
 
     // Join threads when finished
-    pthread_join(tprod, NULL);
+    for (int i = 0; i < PRODUCER_THREADS; ++i)
+    {
+        pthread_join(producerThreads[i], NULL);    
+    }
 
+    std::cout << "PRODUCERS DONE!" << '\n';
     auto t_producer = std::chrono::high_resolution_clock::now();   
     for (int i = 0; i < CONSUMER_THREADS; ++i)
     {
-        pthread_join(tids[i], NULL);    
+        pthread_join(consumerThreads[i], NULL);    
     }
 
     auto t_consumer = std::chrono::high_resolution_clock::now();   
