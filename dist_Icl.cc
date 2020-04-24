@@ -5,6 +5,7 @@
 #include <memory>
 #include <vector>
 #include <map>
+#include <unordered_map>
 
 #include <pthread.h>
 #include <semaphore.h>
@@ -20,7 +21,7 @@
 // using namespace std;
 
 typedef std::map<uint32_t, std::map<uint32_t, double> >  map2_t;
-
+// typedef std::unordered_map<uint32_t, std::unordered_map<uint32_t, double > >  map2_t;
 //---------------------------------------------------------------------------------------------------------
 // GLOBAL VARIABLES
 //---------------------------------------------------------------------------------------------------------

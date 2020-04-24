@@ -105,6 +105,17 @@ void balanced_partition(std::array <unsigned int, CONSUMER_THREADS - 1> & array)
 
 void *producer(void *qs) 
 {
+
+
+    // local buffers
+    uint64_t localBufferIndex[CONSUMER_THREADS] = {0};
+    MatchedPair * localBuffer[CONSUMER_THREADS];
+    for (int i = 0; i < CONSUMER_THREADS; ++i)
+    {
+        localBuffer[i] = new MatchedPair [LOCAL_BUFFER_SIZE];
+    }
+    
+
     Queue *queues = (Queue*) qs;
     // std::cerr << "Hi from producer thread " << std::endl;
     
@@ -169,6 +180,11 @@ void *producer(void *qs)
                                 break;
                             }
                         }
+
+
+
+
+
 
                         Pthread_mutex_lock(&mutex);
                         if (swap == 1)
