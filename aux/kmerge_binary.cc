@@ -66,7 +66,7 @@ void kmerge(std::vector<Iterator> & partIndexes, Comparator cmp = Comparator() )
             }
         }
 
-        for (int i = 1; i < offsetBase2.size(); ++i)
+        for (uint64_t i = 1; i < offsetBase2.size(); ++i)
         {
             std::vector<Iterator> localPartIndexes(partIndexes.begin() + offsetBase2[i-1], 
                                                                         partIndexes.begin() + offsetBase2[i] + 1);
@@ -143,7 +143,7 @@ int main(int argc, char *argv[])
     
     indexes.push_back(buffer);
     auto subBuffer = buffer;
-    for (int i = 0; i < files.size(); ++i)
+    for (uint64_t i = 0; i < files.size(); ++i)
     {
         files[i].read ((char*) subBuffer, sizeof(SmallCA)*fileLines[i]);
         subBuffer += fileLines[i];
