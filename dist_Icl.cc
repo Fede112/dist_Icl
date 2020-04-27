@@ -14,7 +14,7 @@
 #include "concurrentqueue.h"
 
 
-#define LOCAL_BUFFER_SIZE 100
+#define LOCAL_BUFFER_SIZE 1000
 #define PRODUCER_THREADS 1
 #define CONSUMER_THREADS 8
 #define MAX_qID 2353198020
@@ -95,6 +95,7 @@ void balanced_partition(std::array <uint64_t, CONSUMER_THREADS - 1> & array)
     for (int i = 1; i < CONSUMER_THREADS; ++i)
     {
         array[i-1] = MAX_qID*(    1 - sqrt( 1 - i*((MAX_qID-1.)/(MAX_qID*CONSUMER_THREADS)) )  );
+        std::cout << "qIDs_partition: " << array[i-1] << '\n';
     }
     return;
 }
@@ -144,7 +145,6 @@ void *producer(void *qs)
 
     ConcurrentQueue<MatchedPair> *queues = (ConcurrentQueue<MatchedPair>*) qs;
 
-
     pthread_mutex_lock(&pRankLock);
     int rank = pRankCount;
     ++pRankCount;
@@ -157,18 +157,20 @@ void *producer(void *qs)
     uint64_t linesA = partIndices[rank+1][0] - partIndices[rank][0];
     uint64_t linesB = partIndices[rank+1][1] - partIndices[rank][1];
     
-    std::cout << "linesA: " << linesA << '\n';
-    std::cout << "linesB: " << linesB << '\n';
-
+    if(rank == 1)
+    {
+        std::cout << "linesA: " << linesA << '\n';
+        std::cout << "linesB: " << linesB << '\n';
+    }
     // internal buffers
     uint64_t localBufferSize {LOCAL_BUFFER_SIZE}; 
     uint64_t localBufferIndex[CONSUMER_THREADS] = {0};
     MatchedPair localBuffer[CONSUMER_THREADS][localBufferSize] = {MatchedPair()};
     
+    SmallCA * alA = (SmallCA *) bufferA  + partIndices[rank][0];  //pointer to SmallCA to identify bufferA, i.e. the main file
+    SmallCA * alB = (SmallCA *) bufferB  + partIndices[rank][1]; //pointer to SmallCA to bufferB, secondary file
     
-    SmallCA * alA = (SmallCA *) bufferA;  //pointer to SmallCA to identify bufferA, i.e. the main file
-    SmallCA * alB = (SmallCA *) bufferB; //pointer to SmallCA to bufferB, secondary file
-
+    
     uint64_t posA{0}, posB{0};
     uint32_t s0{0};
 
@@ -219,19 +221,25 @@ void *producer(void *qs)
             
                         // decide to which queue the pair goes
                         int tidx = CONSUMER_THREADS - 1;
-                        for (int i = 1; i < CONSUMER_THREADS; ++i)
+                        for (int i = 0; i < CONSUMER_THREADS-1; ++i)
                         {
-                            if(qID1 < qIDs_partition[i-1])
+                            if(qID1 < qIDs_partition[i])
                             {
-                                tidx = i-1;
+                                tidx = i;
+                                if (qID1 == 40300 && qID2 == 48280600)
+                                {
+                                    std::cout << "tidx: " << tidx << '\n';
+                                }
                                 break;
                             }
                         }
                         
                         localBuffer[tidx][localBufferIndex[tidx]] = pair;
+                        
                         ++localBufferIndex[tidx];
                         if (localBufferIndex[tidx] >= localBufferSize)
                         {
+                            
                             queues[tidx].enqueue_bulk(localBuffer[tidx], localBufferSize);
                             localBufferIndex[tidx]=0;
                         }
@@ -249,7 +257,7 @@ void *producer(void *qs)
         {
             localBuffer[i][j]=MatchedPair();
         }
-        std::cout << localBufferIndex[i] << std::endl;
+        // std::cout << localBufferIndex[i] << std::endl;
         queues[i].enqueue_bulk(localBuffer[i], LOCAL_BUFFER_SIZE);
     }
     
@@ -279,6 +287,10 @@ void *consumer(void *q)
         if (queue->try_dequeue_bulk(pairs, LOCAL_BUFFER_SIZE))
             for (int i = 0; i < LOCAL_BUFFER_SIZE; ++i)
             {
+                if (pairs[i].ID1 == 40300 && pairs[i].ID2 == 48280600)
+                {
+                    std::cout << "consumer rank: " << rank << '\n';
+                }
                 vec_maps[rank][ pairs[i].ID1 ][ pairs[i].ID2 ] += pairs[i].distance;
             }
 
@@ -434,6 +446,10 @@ int main(int argc, char** argv) {
                 tmp.ID1 = itr_out->first;
                 tmp.ID2 = itr_in->first;
                 tmp.distance = itr_in->second;
+                if (tmp.ID1 == 40300 && tmp.ID2 == 48280600)
+                {
+                    std::cout << "consumer rank: " << tidx << '\n';
+                }
                 outfile.write((char*)&tmp, sizeof(MatchedPair));
             }   
         } 
