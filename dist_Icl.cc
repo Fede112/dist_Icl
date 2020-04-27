@@ -6,6 +6,7 @@
 #include <vector>
 #include <map>
 #include <unordered_map>
+#include <unistd.h> // getopt
 
 #include <pthread.h>
 #include <semaphore.h>
@@ -285,6 +286,44 @@ void *consumer(void *q)
 
 int main(int argc, char** argv) {
 
+    ////////////////////////////////////////////////////////////////////////
+    // Parser
+    
+    int opt;
+    std::string output{"ouput.bin"}; 
+    std::string input1, input2;
+
+    while ((opt = getopt(argc, argv, "ho:")) != -1) 
+    {
+        switch (opt) 
+        {
+        case 'o':
+            output = optarg;
+            break;
+        case 'h':
+            // go to default
+
+        default: /* '?' */
+            fprintf(stderr, "Usage: %s input.txt -o output.bin \n", argv[0]);
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    if (optind+1 >= argc) 
+    {
+        fprintf(stderr, "Expected two arguments after options\n");
+        exit(EXIT_FAILURE);
+    }
+
+    input1 = argv[optind];
+    input2 = argv[optind+1];
+
+    std::cout << "Input 1: " <<  input1 << '\n';
+    std::cout << "Input 2: " <<  input2 << '\n';
+    std::cout << "Output: " <<  output << '\n';
+    
+    ////////////////////////////////////////////////////////////////////////
+
 
     // Initialize semaphores
     for(sem_t &sw : sem_write){sem_init(&sw, 0, 1);}
@@ -293,8 +332,8 @@ int main(int argc, char** argv) {
 
     // OPEN THE TWO FILES, READ BOTH'S FIST LINE, FIND SMALLEST sID    
     // input (contain clustered alignments); say "B" files (B as Block, eaach block contains data foro
-    std::ifstream infileA (argv[1], std::ifstream::binary);
-    std::ifstream infileB (argv[2], std::ifstream::binary);
+    std::ifstream infileA (input1, std::ifstream::binary);
+    std::ifstream infileB (input2, std::ifstream::binary);
     unsigned long int bytesA{0}, bytesB{0};
     if (infileA)
     {
@@ -307,7 +346,7 @@ int main(int argc, char** argv) {
         std::cerr << "Reading " << bytesA << " characters... ";
         // read data as a block:
         infileA.read (bufferA,bytesA);
-        std::cerr << "all characters read successfully from " << argv[1] << "\n";
+        std::cerr << "all characters read successfully from " << input1 << "\n";
     }
     else
     {
@@ -327,7 +366,7 @@ int main(int argc, char** argv) {
         std::cerr << "Reading " << bytesB << " characters... ";
         // read data as a block:
         infileB.read (bufferB,bytesB);
-        std::cerr << "all characters read successfully from " << argv[2] << "\n";
+        std::cerr << "all characters read successfully from " << input2 << "\n";
     }
     else
     {
@@ -384,8 +423,8 @@ int main(int argc, char** argv) {
 
 
     // PRINT MAP
-    std::cout << "Writing to output... ";
-    auto outfile = std::fstream("outfile.bin", std::ios::out | std::ios::binary);
+    std::cout << "Writing output...";
+    auto outfile = std::fstream(output, std::ios::out | std::ios::binary);
     MatchedPair tmp;
     for (int tidx = 0; tidx < CONSUMER_THREADS; ++tidx)
     {
