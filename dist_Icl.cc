@@ -288,7 +288,7 @@ int main(int argc, char** argv) {
 
     ////////////////////////////////////////////////////////////////////////
     // Parser
-    
+
     int opt;
     std::string output{"ouput.bin"}; 
     std::string input1, input2;
@@ -304,7 +304,7 @@ int main(int argc, char** argv) {
             // go to default
 
         default: /* '?' */
-            fprintf(stderr, "Usage: %s input.txt -o output.bin \n", argv[0]);
+            fprintf(stderr, "Usage: %s input1.bin input2.bin -o output.bin \n", argv[0]);
             exit(EXIT_FAILURE);
         }
     }
