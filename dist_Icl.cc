@@ -167,9 +167,12 @@ void *producer(void *qs)
 
                         auto qID1 = std::min(pA->qID, pB->qID);
                         auto qID2 = std::max(pA->qID, pB->qID);
+                        if (qID1 == qID2) continue;
+                        
                         auto norm = std::min(pA->qSize, pB->qSize);
                         auto pair = MatchedPair(qID1, qID2, 1./norm);
-            
+
+
                         // decide to which queue the pair goes
                         int tidx = CONSUMER_THREADS - 1;
                         for (int i = 1; i < CONSUMER_THREADS; ++i)
@@ -232,13 +235,15 @@ void *producer(void *qs)
         queues[i].fill = queues[i].fidx;
         queues[i].fidx = 0;
     }
-    // sem_post()
-    for(sem_t &sr : sem_read){sem_post(&sr);}
-
+    
     pthread_mutex_lock(&done_lock);
     std::cout << "total producer waittime: " << total_producer_waittime << std::endl;
     done = 1;
     pthread_mutex_unlock(&done_lock);
+    
+    // sem_post()
+    for(sem_t &sr : sem_read){sem_post(&sr);}
+
     pthread_exit(NULL);
 
 }
@@ -259,9 +264,6 @@ void *consumer(void *q)
             vec_maps[queue->index][ queue->read_buffer[i].ID1 ][ queue->read_buffer[i].ID2 ] += queue->read_buffer[i].distance;
         }
 
-        // sem_post write
-        sem_post(&sem_write[queue->index]);
-
 
         // exit routine condition
         pthread_mutex_lock(&done_lock);
@@ -272,6 +274,8 @@ void *consumer(void *q)
         }
         pthread_mutex_unlock(&done_lock);
 
+        // sem_post write
+        sem_post(&sem_write[queue->index]);
     }
 
 }
@@ -290,7 +294,7 @@ int main(int argc, char** argv) {
     // Parser
 
     int opt;
-    std::string output{"ouput.bin"}; 
+    std::string output{"output.bin"}; 
     std::string input1, input2;
 
     while ((opt = getopt(argc, argv, "ho:")) != -1) 
