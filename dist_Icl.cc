@@ -376,7 +376,7 @@ int main(int argc, char** argv) {
         std::cerr << "Reading " << bytesA << " characters... ";
         // read data as a block:
         infileA.read (bufferA,bytesA);
-        std::cerr << "all characters read successfully from " << argv[1] << "\n";
+        std::cerr << "all characters read successfully from " << input1 << "\n";
     }
     else
     {
@@ -396,7 +396,7 @@ int main(int argc, char** argv) {
         std::cerr << "Reading " << bytesB << " characters... ";
         // read data as a block:
         infileB.read (bufferB,bytesB);
-        std::cerr << "all characters read successfully from " << argv[2] << "\n";
+        std::cerr << "all characters read successfully from " << input2 << "\n";
     }
     else
     {
