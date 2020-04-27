@@ -5,6 +5,8 @@
 #include <memory>
 #include <vector>
 #include <map>
+#include <unordered_map>
+#include <unistd.h> // getopt
 
 #include <pthread.h>
 #include <semaphore.h>
@@ -14,7 +16,7 @@
 #include "concurrentqueue.h"
 
 
-#define LOCAL_BUFFER_SIZE 1000
+#define LOCAL_BUFFER_SIZE 10000
 #define PRODUCER_THREADS 1
 #define CONSUMER_THREADS 8
 #define MAX_qID 2353198020
@@ -95,7 +97,6 @@ void balanced_partition(std::array <uint64_t, CONSUMER_THREADS - 1> & array)
     for (int i = 1; i < CONSUMER_THREADS; ++i)
     {
         array[i-1] = MAX_qID*(    1 - sqrt( 1 - i*((MAX_qID-1.)/(MAX_qID*CONSUMER_THREADS)) )  );
-        std::cout << "qIDs_partition: " << array[i-1] << '\n';
     }
     return;
 }
@@ -226,10 +227,6 @@ void *producer(void *qs)
                             if(qID1 < qIDs_partition[i])
                             {
                                 tidx = i;
-                                if (qID1 == 40300 && qID2 == 48280600)
-                                {
-                                    std::cout << "tidx: " << tidx << '\n';
-                                }
                                 break;
                             }
                         }
@@ -269,14 +266,15 @@ void *producer(void *qs)
 
 }
 
-void *consumer(void *q) 
+void *consumer(void *qs) 
 {
-    ConcurrentQueue<MatchedPair> * queue = (ConcurrentQueue<MatchedPair>*) q;
-
     pthread_mutex_lock(&cRankLock);    
     int rank = cRankCount;
     ++cRankCount;
     pthread_mutex_unlock(&cRankLock);
+    
+    ConcurrentQueue<MatchedPair> * queue = (ConcurrentQueue<MatchedPair>*) qs + rank;
+
     // std::cerr << "Hi from consumer thread: " << rank << std::endl;
 
     while(1)
@@ -287,10 +285,6 @@ void *consumer(void *q)
         if (queue->try_dequeue_bulk(pairs, LOCAL_BUFFER_SIZE))
             for (int i = 0; i < LOCAL_BUFFER_SIZE; ++i)
             {
-                if (pairs[i].ID1 == 40300 && pairs[i].ID2 == 48280600)
-                {
-                    std::cout << "consumer rank: " << rank << '\n';
-                }
                 vec_maps[rank][ pairs[i].ID1 ][ pairs[i].ID2 ] += pairs[i].distance;
             }
 
@@ -326,11 +320,50 @@ void *consumer(void *q)
 
 int main(int argc, char** argv) {
 
+    ////////////////////////////////////////////////////////////////////////
+    // Parser
+
+    int opt;
+    std::string output{"output.bin"}; 
+    std::string input1, input2;
+
+    while ((opt = getopt(argc, argv, "ho:")) != -1) 
+    {
+        switch (opt) 
+        {
+        case 'o':
+            output = optarg;
+            break;
+        case 'h':
+            // go to default
+
+        default: /* '?' */
+            fprintf(stderr, "Usage: %s input1.bin input2.bin -o output.bin \n", argv[0]);
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    if (optind+1 >= argc) 
+    {
+        fprintf(stderr, "Expected two arguments after options\n");
+        exit(EXIT_FAILURE);
+    }
+
+    input1 = argv[optind];
+    input2 = argv[optind+1];
+
+    std::cout << "Input 1: " <<  input1 << '\n';
+    std::cout << "Input 2: " <<  input2 << '\n';
+    std::cout << "Output: " <<  output << '\n';
+    
+    ////////////////////////////////////////////////////////////////////////
+
+
 
     // OPEN THE TWO FILES, READ BOTH'S FIST LINE, FIND SMALLEST sID    
     // input (contain clustered alignments); say "B" files (B as Block, eaach block contains data foro
-    std::ifstream infileA (argv[1], std::ifstream::binary);
-    std::ifstream infileB (argv[2], std::ifstream::binary);
+    std::ifstream infileA (input1, std::ifstream::binary);
+    std::ifstream infileB (input2, std::ifstream::binary);
     unsigned long int bytesA{0}, bytesB{0};
     if (infileA)
     {
@@ -401,7 +434,7 @@ int main(int argc, char** argv) {
         // Create attributes
         pthread_attr_t attr;
         pthread_attr_init(&attr);
-        pthread_create(&consumerThreads[i], &attr, consumer, &queues[i]);
+        pthread_create(&consumerThreads[i], &attr, consumer, &queues);
     } 
 
     /* Here main thread could do normalization calculation 
@@ -435,21 +468,18 @@ int main(int argc, char** argv) {
 
 
     // PRINT MAP
-    std::cout << "Writing to output... ";
-    auto outfile = std::fstream("outfile.bin", std::ios::out | std::ios::binary);
+    std::cout << "Writing to " << output << "... ";
+    auto outfile = std::fstream(output, std::ios::out | std::ios::binary);
     MatchedPair tmp;
     for (int tidx = 0; tidx < CONSUMER_THREADS; ++tidx)
     {
         for (auto itr_out = vec_maps[tidx].cbegin(); itr_out != vec_maps[tidx].cend(); ++itr_out) { 
+            if (itr_out->first == 0) {continue;}
             for (auto itr_in = itr_out->second.cbegin(); itr_in != itr_out->second.cend(); ++itr_in)
             {   
                 tmp.ID1 = itr_out->first;
                 tmp.ID2 = itr_in->first;
                 tmp.distance = itr_in->second;
-                if (tmp.ID1 == 40300 && tmp.ID2 == 48280600)
-                {
-                    std::cout << "consumer rank: " << tidx << '\n';
-                }
                 outfile.write((char*)&tmp, sizeof(MatchedPair));
             }   
         } 
