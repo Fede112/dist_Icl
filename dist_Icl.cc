@@ -160,8 +160,8 @@ void *producer(void *qs)
     
     if(rank == 1)
     {
-        std::cout << "linesA: " << linesA << '\n';
-        std::cout << "linesB: " << linesB << '\n';
+        std::err << "linesA: " << linesA << '\n';
+        std::err << "linesB: " << linesB << '\n';
     }
     // internal buffers
     uint64_t localBufferSize {LOCAL_BUFFER_SIZE}; 
@@ -199,7 +199,7 @@ void *producer(void *qs)
                 ++alA;
                 ++posA;
             }
-            // std::cout << icount << std::endl;
+            // std::err << icount << std::endl;
 
             while(posB<linesB && alB->sID == s0 ) //cerca tutti gli altri che seguono con la stessa sID (sono sortati wrt sID apposta..) ---- B
             {
@@ -254,7 +254,7 @@ void *producer(void *qs)
         {
             localBuffer[i][j]=MatchedPair();
         }
-        // std::cout << localBufferIndex[i] << std::endl;
+        // std::err << localBufferIndex[i] << std::endl;
         queues[i].enqueue_bulk(localBuffer[i], LOCAL_BUFFER_SIZE);
     }
     
@@ -352,9 +352,9 @@ int main(int argc, char** argv) {
     input1 = argv[optind];
     input2 = argv[optind+1];
 
-    std::cout << "Input 1: " <<  input1 << '\n';
-    std::cout << "Input 2: " <<  input2 << '\n';
-    std::cout << "Output: " <<  output << '\n';
+    std::err << "Input 1: " <<  input1 << '\n';
+    std::err << "Input 2: " <<  input2 << '\n';
+    std::err << "Output: " <<  output << '\n';
     
     ////////////////////////////////////////////////////////////////////////
 
@@ -380,7 +380,7 @@ int main(int argc, char** argv) {
     }
     else
     {
-      std::cout << "error: only " << infileA.gcount() << " could be read";
+      std::err << "error: only " << infileA.gcount() << " could be read";
       return 1;
     }
     infileA.close();
@@ -400,7 +400,7 @@ int main(int argc, char** argv) {
     }
     else
     {
-      std::cout << "error: only " << infileB.gcount() << " could be read";
+      std::err << "error: only " << infileB.gcount() << " could be read";
       return 1;
     }
     infileB.close();
@@ -447,7 +447,7 @@ int main(int argc, char** argv) {
         pthread_join(producerThreads[i], NULL);    
     }
 
-    std::cout << "PRODUCERS DONE!" << '\n';
+    std::err << "PRODUCERS DONE!" << '\n';
     auto t_producer = std::chrono::high_resolution_clock::now();   
     for (int i = 0; i < CONSUMER_THREADS; ++i)
     {
@@ -468,7 +468,7 @@ int main(int argc, char** argv) {
 
 
     // PRINT MAP
-    std::cout << "Writing to " << output << "... ";
+    std::err << "Writing to " << output << "... ";
     auto outfile = std::fstream(output, std::ios::out | std::ios::binary);
     MatchedPair tmp;
     for (int tidx = 0; tidx < CONSUMER_THREADS; ++tidx)
