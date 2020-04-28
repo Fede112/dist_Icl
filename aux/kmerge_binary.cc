@@ -83,7 +83,7 @@ void kmerge(std::vector<Iterator> & partIndexes, Comparator cmp = Comparator() )
 int main(int argc, char *argv[])
 {
     int opt;
-    std::string outFilename;
+    std::string outFilename={"merged_output.bin"};
     std::vector<std::string> filenames;
 
     while ((opt = getopt(argc, argv, "ho:")) != -1) 
@@ -130,7 +130,7 @@ int main(int argc, char *argv[])
             file.seekg (0, file.end);
             bytes = file.tellg();
             lines = bytes/sizeof(SmallCA);
-            std::cout << lines << std::endl;
+            // std::cout << lines << std::endl;
             fileLines.push_back(lines);
             totalLines += lines;
             file.seekg (0, file.beg);
@@ -152,18 +152,12 @@ int main(int argc, char *argv[])
 
     kmerge(indexes, compare_sID());
 
-    
-    std::cout << std::is_sorted(buffer, buffer+totalLines, compare_sID()) << std::endl;
+    std::cout << "Check if file is sorted: " << std::is_sorted(buffer, buffer+totalLines, compare_sID()) << std::endl;
 
+    std::ofstream out(outFilename, std::ios::binary);
+    out.write((char*)buffer, totalLines*sizeof(SmallCA));
+    out.close();
 
-    std::cout << "Writing to output... ";
-    auto outfile = std::fstream("outfile.bin", std::ios::out | std::ios::binary);
-    MatchedPair tmp;
-
-
-    outfile.write((char*)&tmp, sizeof(SmallCA));
-    
-    outfile.close();
 
     return 0;
 
