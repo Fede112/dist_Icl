@@ -30,15 +30,16 @@ using namespace moodycamel;
 
 struct MatchedPair
 {
-    uint32_t ID1;
     uint32_t ID2;
+    uint32_t ID1;
     double distance;
 
-    MatchedPair(): ID1(0), ID2(0), distance(0) {}
-    MatchedPair(uint32_t id1, uint32_t id2, double d): ID1(id1), ID2(id2), distance(d) {}
+    MatchedPair(): ID2(0), ID1(0), distance(0) {}
+    MatchedPair(uint32_t id2, uint32_t id1, double d): ID2(id2), ID1(id1), distance(d) {}
 };
 
-typedef std::map<uint32_t, std::map<uint32_t, double> >  map2_t;
+// typedef std::map<uint32_t, std::map<uint32_t, double> >  map2_t;
+typedef std::unordered_map<uint32_t, std::unordered_map<uint32_t, double> >  map2_t;
 
 //---------------------------------------------------------------------------------------------------------
 // GLOBAL VARIABLES
@@ -160,8 +161,8 @@ void *producer(void *qs)
     
     if(rank == 1)
     {
-        std::err << "linesA: " << linesA << '\n';
-        std::err << "linesB: " << linesB << '\n';
+        std::cerr << "linesA: " << linesA << '\n';
+        std::cerr << "linesB: " << linesB << '\n';
     }
     // internal buffers
     uint64_t localBufferSize {LOCAL_BUFFER_SIZE}; 
@@ -199,7 +200,7 @@ void *producer(void *qs)
                 ++alA;
                 ++posA;
             }
-            // std::err << icount << std::endl;
+            // std::cerr << icount << std::endl;
 
             while(posB<linesB && alB->sID == s0 ) //cerca tutti gli altri che seguono con la stessa sID (sono sortati wrt sID apposta..) ---- B
             {
@@ -254,7 +255,7 @@ void *producer(void *qs)
         {
             localBuffer[i][j]=MatchedPair();
         }
-        // std::err << localBufferIndex[i] << std::endl;
+        // std::cerr << localBufferIndex[i] << std::endl;
         queues[i].enqueue_bulk(localBuffer[i], LOCAL_BUFFER_SIZE);
     }
     
@@ -291,6 +292,7 @@ void *consumer(void *qs)
         pthread_mutex_lock(&doneLock);
         if (done == PRODUCER_THREADS)
         {
+            pthread_mutex_unlock(&doneLock);
             while (queue->try_dequeue_bulk(pairs, LOCAL_BUFFER_SIZE))
             {
                 for (int i = 0; i < LOCAL_BUFFER_SIZE; ++i)
@@ -299,7 +301,21 @@ void *consumer(void *qs)
                 }
                 
             }
-            pthread_mutex_unlock(&doneLock);
+
+            // std::string output = "output_" + std::to_string(rank) + ".bin";
+            // auto outfile = std::fstream(output, std::ios::out | std::ios::binary);
+            // MatchedPair tmp;
+            // for (auto itr_out = vec_maps[rank].cbegin(); itr_out != vec_maps[rank].cend(); ++itr_out) 
+            // { 
+            //     if (itr_out->first == 0) {continue;}
+            //     for (auto itr_in = itr_out->second.cbegin(); itr_in != itr_out->second.cend(); ++itr_in)
+            //     {   
+            //         tmp.ID1 = itr_out->first;
+            //         tmp.ID2 = itr_in->first;
+            //         tmp.distance = itr_in->second;
+            //         outfile.write((char*)&tmp, sizeof(MatchedPair));
+            //     }   
+            // }
             pthread_exit(NULL);
         }
         pthread_mutex_unlock(&doneLock);
@@ -352,9 +368,9 @@ int main(int argc, char** argv) {
     input1 = argv[optind];
     input2 = argv[optind+1];
 
-    std::err << "Input 1: " <<  input1 << '\n';
-    std::err << "Input 2: " <<  input2 << '\n';
-    std::err << "Output: " <<  output << '\n';
+    std::cerr << "Input 1: " <<  input1 << '\n';
+    std::cerr << "Input 2: " <<  input2 << '\n';
+    std::cerr << "Output: " <<  output << '\n';
     
     ////////////////////////////////////////////////////////////////////////
 
@@ -380,7 +396,7 @@ int main(int argc, char** argv) {
     }
     else
     {
-      std::err << "error: only " << infileA.gcount() << " could be read";
+      std::cerr << "error: only " << infileA.gcount() << " could be read";
       return 1;
     }
     infileA.close();
@@ -400,7 +416,7 @@ int main(int argc, char** argv) {
     }
     else
     {
-      std::err << "error: only " << infileB.gcount() << " could be read";
+      std::cerr << "error: only " << infileB.gcount() << " could be read";
       return 1;
     }
     infileB.close();
@@ -437,8 +453,7 @@ int main(int argc, char** argv) {
         pthread_create(&consumerThreads[i], &attr, consumer, &queues);
     } 
 
-    /* Here main thread could do normalization calculation 
-        while cluster distance is calculated in child threads */
+    /* Producer-consumer running */
 
 
     // Join threads when finished
@@ -447,7 +462,7 @@ int main(int argc, char** argv) {
         pthread_join(producerThreads[i], NULL);    
     }
 
-    std::err << "PRODUCERS DONE!" << '\n';
+    std::cerr << "PRODUCERS DONE!" << '\n';
     auto t_producer = std::chrono::high_resolution_clock::now();   
     for (int i = 0; i < CONSUMER_THREADS; ++i)
     {
@@ -468,7 +483,7 @@ int main(int argc, char** argv) {
 
 
     // PRINT MAP
-    std::err << "Writing to " << output << "... ";
+    std::cerr << "Writing to " << output << "... ";
     auto outfile = std::fstream(output, std::ios::out | std::ios::binary);
     MatchedPair tmp;
     for (int tidx = 0; tidx < CONSUMER_THREADS; ++tidx)
