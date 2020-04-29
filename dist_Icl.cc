@@ -168,7 +168,7 @@ void *producer(void *qs)
     uint64_t localBufferIndex[CONSUMER_THREADS] = {0};
     MatchedPair localBuffer[CONSUMER_THREADS][localBufferSize] = {MatchedPair()};
     
-    
+
     // MatchedPair **localBuffer = new MatchedPair* [CONSUMER_THREADS];
     // for(uint32_t i = 0; i < CONSUMER_THREADS; ++i) 
     // {
@@ -434,7 +434,7 @@ int main(int argc, char** argv) {
     }
     else
     {
-      std::cout << "error: only " << infileB.gcount() << " could be read";
+      std::cout << "error: only " << infileB.gcount() << " could be read \n";
       return 1;
     }
     infileB.close();
