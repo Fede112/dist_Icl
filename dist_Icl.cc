@@ -35,10 +35,10 @@ struct MatchedPair
     uint32_t ID2;
     double distance;
 
-    // MatchedPair(): ID1(0), ID2(0), distance(0) {}
-    // MatchedPair(uint32_t id1, uint32_t id2, double d):  ID1(id1), ID2(id2), distance(d) {}
-    MatchedPair(): ID2(0), ID1(0),  distance(0) {}
-    MatchedPair( uint32_t id1, uint32_t id2, double d):   ID2(id2), ID1(id1), distance(d) {}
+    MatchedPair(): ID1(0), ID2(0), distance(0) {}
+    MatchedPair(uint32_t id1, uint32_t id2, double d):  ID1(id1), ID2(id2), distance(d) {}
+    // MatchedPair(): ID2(0), ID1(0),  distance(0) {}
+    // MatchedPair( uint32_t id1, uint32_t id2, double d):   ID2(id2), ID1(id1), distance(d) {}
 };
 
 typedef std::map<uint32_t, std::map<uint32_t, double> >  map2_t;
