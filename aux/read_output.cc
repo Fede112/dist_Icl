@@ -79,7 +79,7 @@ int main(int argc, char** argv)
     for (uint64_t i = 0; i < lines; ++i)
     {
         // pointer arithmetic depends on the pointer type: 3 unsigned int per line || 6 unsigned short per line.
-        std::cout << pInteger[4*i+1] << ' ' << pInteger[4*i] << ' ' << pDouble[2*i + 1] <<'\n';    
+        std::cout << pInteger[4*i] << ' ' << pInteger[4*i+1] << ' ' << pDouble[2*i + 1] <<'\n';    
     }
     
 

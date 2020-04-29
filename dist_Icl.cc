@@ -7,6 +7,7 @@
 #include <map>
 #include <unordered_map>
 #include <unistd.h> // getopt
+#include <cstring> // memcpy
 
 #include <pthread.h>
 #include <semaphore.h>
@@ -34,12 +35,14 @@ struct MatchedPair
     uint32_t ID1;
     double distance;
 
-    MatchedPair(): ID2(0), ID1(0), distance(0) {}
-    MatchedPair(uint32_t id2, uint32_t id1, double d): ID2(id2), ID1(id1), distance(d) {}
+    // MatchedPair(): ID1(0), ID2(0), distance(0) {}
+    // MatchedPair(uint32_t id1, uint32_t id2, double d):  ID1(id1), ID2(id2), distance(d) {}
+    MatchedPair(): ID2(0), ID1(0),  distance(0) {}
+    MatchedPair( uint32_t id1, uint32_t id2, double d):   ID2(id2), ID1(id1), distance(d) {}
 };
 
-// typedef std::map<uint32_t, std::map<uint32_t, double> >  map2_t;
-typedef std::unordered_map<uint32_t, std::unordered_map<uint32_t, double> >  map2_t;
+typedef std::map<uint32_t, std::map<uint32_t, double> >  map2_t;
+// typedef std::unordered_map<uint32_t, std::unordered_map<uint32_t, double> >  map2_t;
 
 //---------------------------------------------------------------------------------------------------------
 // GLOBAL VARIABLES
@@ -161,8 +164,8 @@ void *producer(void *qs)
     
     if(rank == 1)
     {
-        std::cerr << "linesA: " << linesA << '\n';
-        std::cerr << "linesB: " << linesB << '\n';
+        std::cout << "linesA: " << linesA << '\n';
+        std::cout << "linesB: " << linesB << '\n';
     }
     // internal buffers
     uint64_t localBufferSize {LOCAL_BUFFER_SIZE}; 
@@ -200,7 +203,7 @@ void *producer(void *qs)
                 ++alA;
                 ++posA;
             }
-            // std::cerr << icount << std::endl;
+            // std::cout << icount << std::endl;
 
             while(posB<linesB && alB->sID == s0 ) //cerca tutti gli altri che seguono con la stessa sID (sono sortati wrt sID apposta..) ---- B
             {
@@ -216,9 +219,11 @@ void *producer(void *qs)
                     if( dist(pA,pB) < 0.2 ) 
                     {
 
+
                         auto qID1 = std::min(pA->qID, pB->qID);
                         auto qID2 = std::max(pA->qID, pB->qID);
                         auto norm = std::min(pA->qSize, pB->qSize);
+                        // auto norm = 1.;
                         auto pair = MatchedPair(qID1, qID2, 1./norm);
             
                         // decide to which queue the pair goes
@@ -237,7 +242,6 @@ void *producer(void *qs)
                         ++localBufferIndex[tidx];
                         if (localBufferIndex[tidx] >= localBufferSize)
                         {
-                            
                             queues[tidx].enqueue_bulk(localBuffer[tidx], localBufferSize);
                             localBufferIndex[tidx]=0;
                         }
@@ -255,7 +259,7 @@ void *producer(void *qs)
         {
             localBuffer[i][j]=MatchedPair();
         }
-        // std::cerr << localBufferIndex[i] << std::endl;
+        // std::cout << localBufferIndex[i] << std::endl;
         queues[i].enqueue_bulk(localBuffer[i], LOCAL_BUFFER_SIZE);
     }
     
@@ -274,9 +278,9 @@ void *consumer(void *qs)
     ++cRankCount;
     pthread_mutex_unlock(&cRankLock);
     
-    ConcurrentQueue<MatchedPair> * queue = (ConcurrentQueue<MatchedPair>*) qs + rank;
+    ConcurrentQueue<MatchedPair> * queue = ((ConcurrentQueue<MatchedPair>*) qs) + rank;
 
-    // std::cerr << "Hi from consumer thread: " << rank << std::endl;
+    // std::cout << "Hi from consumer thread: " << rank << std::endl;
 
     while(1)
     {
@@ -302,6 +306,7 @@ void *consumer(void *qs)
                 
             }
 
+            // output per thread
             // std::string output = "output_" + std::to_string(rank) + ".bin";
             // auto outfile = std::fstream(output, std::ios::out | std::ios::binary);
             // MatchedPair tmp;
@@ -316,6 +321,9 @@ void *consumer(void *qs)
             //         outfile.write((char*)&tmp, sizeof(MatchedPair));
             //     }   
             // }
+            // outfile.close();
+
+            // terminate thread
             pthread_exit(NULL);
         }
         pthread_mutex_unlock(&doneLock);
@@ -368,9 +376,9 @@ int main(int argc, char** argv) {
     input1 = argv[optind];
     input2 = argv[optind+1];
 
-    std::cerr << "Input 1: " <<  input1 << '\n';
-    std::cerr << "Input 2: " <<  input2 << '\n';
-    std::cerr << "Output: " <<  output << '\n';
+    std::cout << "Input 1: " <<  input1 << '\n';
+    std::cout << "Input 2: " <<  input2 << '\n';
+    std::cout << "Output: " <<  output << '\n';
     
     ////////////////////////////////////////////////////////////////////////
 
@@ -389,14 +397,14 @@ int main(int argc, char** argv) {
         bufferA = new char [bytesA];
         totalLinesA = bytesA/sizeof(SmallCA);
 
-        std::cerr << "Reading " << bytesA << " characters... ";
+        std::cout << "Reading " << bytesA << " characters... ";
         // read data as a block:
         infileA.read (bufferA,bytesA);
-        std::cerr << "all characters read successfully from " << input1 << "\n";
+        std::cout << "all characters read successfully from " << input1 << "\n";
     }
     else
     {
-      std::cerr << "error: only " << infileA.gcount() << " could be read";
+      std::cout << "error: only " << infileA.gcount() << " could be read";
       return 1;
     }
     infileA.close();
@@ -409,14 +417,14 @@ int main(int argc, char** argv) {
         bufferB = new char [bytesB];
         totalLinesB = bytesB/sizeof(SmallCA);
 
-        std::cerr << "Reading " << bytesB << " characters... ";
+        std::cout << "Reading " << bytesB << " characters... ";
         // read data as a block:
         infileB.read (bufferB,bytesB);
-        std::cerr << "all characters read successfully from " << input2 << "\n";
+        std::cout << "all characters read successfully from " << input2 << "\n";
     }
     else
     {
-      std::cerr << "error: only " << infileB.gcount() << " could be read";
+      std::cout << "error: only " << infileB.gcount() << " could be read";
       return 1;
     }
     infileB.close();
@@ -424,6 +432,8 @@ int main(int argc, char** argv) {
     
     // Initialize queues
     std::array<ConcurrentQueue<MatchedPair>, CONSUMER_THREADS> queues;
+    // for (auto & q: queues)
+        // q = ConcurrentQueue<MatchedPair>(5000000);
 
     // Define qIDs balanced partition per thread
     balanced_partition(qIDs_partition);
@@ -462,7 +472,7 @@ int main(int argc, char** argv) {
         pthread_join(producerThreads[i], NULL);    
     }
 
-    std::cerr << "PRODUCERS DONE!" << '\n';
+    std::cout << "PRODUCERS DONE!" << '\n';
     auto t_producer = std::chrono::high_resolution_clock::now();   
     for (int i = 0; i < CONSUMER_THREADS; ++i)
     {
@@ -472,20 +482,21 @@ int main(int argc, char** argv) {
     auto t_consumer = std::chrono::high_resolution_clock::now();   
     auto diff_cons_prod = std::chrono::duration_cast<std::chrono::milliseconds>
                         (t_consumer-t_producer).count();
-    std::cerr << "Difference consumer-producer (ms): "<< diff_cons_prod << std::endl;
+    std::cout << "Difference consumer-producer (ms): "<< diff_cons_prod << std::endl;
      
     
     auto t2_processing = std::chrono::high_resolution_clock::now();   
     auto processing_waittime = std::chrono::duration_cast<std::chrono::milliseconds>
                         (t2_processing-t1_processing).count();
-    std::cerr << "Processing time (ms): "<< processing_waittime << std::endl;
+    std::cout << "Processing time (ms): "<< processing_waittime << std::endl;
     //---------------------------------------------------------------------------------------------------------
 
 
     // PRINT MAP
-    std::cerr << "Writing to " << output << "... ";
+    std::cout << "Writing to " << output << "... ";
     auto outfile = std::fstream(output, std::ios::out | std::ios::binary);
     MatchedPair tmp;
+
     for (int tidx = 0; tidx < CONSUMER_THREADS; ++tidx)
     {
         for (auto itr_out = vec_maps[tidx].cbegin(); itr_out != vec_maps[tidx].cend(); ++itr_out) { 
@@ -505,15 +516,12 @@ int main(int argc, char** argv) {
     auto t3_output = std::chrono::high_resolution_clock::now();   
     auto total_time = std::chrono::duration_cast<std::chrono::milliseconds>
                         (t3_output-t1_processing).count();
-    std::cerr << "Total time (ms): "<< total_time << std::endl;
+    std::cout << "Total time (ms): "<< total_time << std::endl;
 
     delete[] bufferA;
     delete[] bufferB;
-
-    
      
     return 0;
-
 }
 
 
