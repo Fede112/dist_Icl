@@ -18,7 +18,7 @@
 
 
 #define LOCAL_BUFFER_SIZE 10000
-#define PRODUCER_THREADS 1
+#define PRODUCER_THREADS 2
 #define CONSUMER_THREADS 8
 #define MAX_qID 2353198020
 
@@ -41,8 +41,8 @@ struct MatchedPair
     // MatchedPair( uint32_t id1, uint32_t id2, double d):   ID2(id2), ID1(id1), distance(d) {}
 };
 
-typedef std::map<uint32_t, std::map<uint32_t, double> >  map2_t;
-// typedef std::unordered_map<uint32_t, std::unordered_map<uint32_t, double> >  map2_t;
+// typedef std::map<uint32_t, std::map<uint32_t, double> >  map2_t;
+typedef std::unordered_map<uint32_t, std::unordered_map<uint32_t, double> >  map2_t;
 
 //---------------------------------------------------------------------------------------------------------
 // GLOBAL VARIABLES
@@ -162,16 +162,20 @@ void *producer(void *qs)
     uint64_t linesA = partIndices[rank+1][0] - partIndices[rank][0];
     uint64_t linesB = partIndices[rank+1][1] - partIndices[rank][1];
     
-    if(rank == 1)
-    {
-        std::cout << "linesA: " << linesA << '\n';
-        std::cout << "linesB: " << linesB << '\n';
-    }
+    
     // internal buffers
     uint64_t localBufferSize {LOCAL_BUFFER_SIZE}; 
     uint64_t localBufferIndex[CONSUMER_THREADS] = {0};
     MatchedPair localBuffer[CONSUMER_THREADS][localBufferSize] = {MatchedPair()};
     
+    
+    // MatchedPair **localBuffer = new MatchedPair* [CONSUMER_THREADS];
+    // for(uint32_t i = 0; i < CONSUMER_THREADS; ++i) 
+    // {
+    //     localBuffer[i] = new MatchedPair[LOCAL_BUFFER_SIZE]();
+    // }
+   
+
     SmallCA * alA = (SmallCA *) bufferA  + partIndices[rank][0];  //pointer to SmallCA to identify bufferA, i.e. the main file
     SmallCA * alB = (SmallCA *) bufferB  + partIndices[rank][1]; //pointer to SmallCA to bufferB, secondary file
     
@@ -262,6 +266,12 @@ void *producer(void *qs)
         // std::cout << localBufferIndex[i] << std::endl;
         queues[i].enqueue_bulk(localBuffer[i], LOCAL_BUFFER_SIZE);
     }
+
+    // for(uint32_t i = 0; i < CONSUMER_THREADS; ++i) 
+    // {
+    //     delete [] localBuffer[i];
+    // }
+    // delete [] localBuffer;
     
 
     pthread_mutex_lock(&doneLock);
