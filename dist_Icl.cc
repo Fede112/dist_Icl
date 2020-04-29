@@ -31,8 +31,8 @@ using namespace moodycamel;
 
 struct MatchedPair
 {
-    uint32_t ID2;
     uint32_t ID1;
+    uint32_t ID2;
     double distance;
 
     // MatchedPair(): ID1(0), ID2(0), distance(0) {}
