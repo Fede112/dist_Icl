@@ -414,7 +414,7 @@ int main(int argc, char** argv) {
     }
     else
     {
-      std::cout << "error: only " << infileA.gcount() << " could be read";
+      std::cout << "error: only " << infileA.gcount() << " could be read \n";
       return 1;
     }
     infileA.close();
