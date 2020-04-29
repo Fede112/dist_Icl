@@ -200,14 +200,14 @@ void *producer(void *qs)
                             producer_waittime = std::chrono::duration_cast<std::chrono::milliseconds>
                                                 (t2_producer-t1_producer).count();
                             total_producer_waittime += producer_waittime;
-                            // std::cerr << "Producer waiting time: "<< producer_waittime << std::endl;
+                            // std::cout << "Producer waiting time: "<< producer_waittime << std::endl;
 
                             // swap
                             for (int i = 0; i < CONSUMER_THREADS; ++i)
                             {
                                 queues[i].write_buffer.swap(queues[i].read_buffer);
-                                // std::cerr << (double)queues[i].fidx/BUFFER_SIZE << " ";
-                                // std::cerr << queues[i].index << " buffer: "<< queues[i].fidx << std::endl;
+                                // std::cout << (double)queues[i].fidx/BUFFER_SIZE << " ";
+                                // std::cout << queues[i].index << " buffer: "<< queues[i].fidx << std::endl;
                                 queues[i].fill = queues[i].fidx;
                                 queues[i].fidx = 0;
                             }
@@ -231,7 +231,7 @@ void *producer(void *qs)
     for (int i = 0; i < CONSUMER_THREADS; ++i)
     {
         queues[i].write_buffer.swap(queues[i].read_buffer);
-        // std::cerr << queues[i].index << " buffer: "<< queues[i].fidx << std::endl;
+        // std::cout << queues[i].index << " buffer: "<< queues[i].fidx << std::endl;
         queues[i].fill = queues[i].fidx;
         queues[i].fidx = 0;
     }
@@ -251,7 +251,7 @@ void *producer(void *qs)
 void *consumer(void *q) 
 {
     Queue * queue = (Queue*) q;
-    // std::cerr << "Hi from consumer thread: " << queue->index << std::endl;
+    // std::cout << "Hi from consumer thread: " << queue->index << std::endl;
 
     while(1)
     {
@@ -347,10 +347,10 @@ int main(int argc, char** argv) {
         bufferA = new char [bytesA];
         linesA = bytesA/sizeof(SmallCA);
 
-        std::cerr << "Reading " << bytesA << " characters... ";
+        std::cout << "Reading " << bytesA << " characters... ";
         // read data as a block:
         infileA.read (bufferA,bytesA);
-        std::cerr << "all characters read successfully from " << input1 << "\n";
+        std::cout << "all characters read successfully from " << input1 << "\n";
     }
     else
     {
@@ -367,10 +367,10 @@ int main(int argc, char** argv) {
         bufferB = new char [bytesB];
         linesB = bytesB/sizeof(SmallCA);
 
-        std::cerr << "Reading " << bytesB << " characters... ";
+        std::cout << "Reading " << bytesB << " characters... ";
         // read data as a block:
         infileB.read (bufferB,bytesB);
-        std::cerr << "all characters read successfully from " << input2 << "\n";
+        std::cout << "all characters read successfully from " << input2 << "\n";
     }
     else
     {
@@ -422,7 +422,7 @@ int main(int argc, char** argv) {
     auto t2_processing = std::chrono::high_resolution_clock::now();   
     auto processing_waittime = std::chrono::duration_cast<std::chrono::milliseconds>
                         (t2_processing-t1_processing).count();
-    std::cerr << "Processing time (ms): "<< processing_waittime << std::endl;
+    std::cout << "Processing time (ms): "<< processing_waittime << std::endl;
     //---------------------------------------------------------------------------------------------------------
 
 
@@ -452,7 +452,7 @@ int main(int argc, char** argv) {
     auto t_output = std::chrono::high_resolution_clock::now();   
     auto total_waittime = std::chrono::duration_cast<std::chrono::milliseconds>
                         (t_output-t1_processing).count();
-    std::cerr << "Total time (ms): "<< total_waittime << std::endl;
+    std::cout << "Total time (ms): "<< total_waittime << std::endl;
     
     
      

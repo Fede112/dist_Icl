@@ -49,7 +49,7 @@ pipeline:
 debug: CXXFLAGS += $(DEBUG)
 debug: default
 debug: 
-	valgrind ./${EXE} ./data_qsize/BIG1_10e4.bin  ./data_qsize/BIG2_10e4.bin
+	valgrind ./${EXE} ./data_qsize/BIG1_10e5_div4.bin  ./data_qsize/BIG2_10e5_div4.bin
 
 # TESTS:
 
