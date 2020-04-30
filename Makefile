@@ -14,10 +14,10 @@ default: $(EXE)
 
 
 $(EXE): $(OBJS)
-	$(CXX) $^ -o $@  $(LDFLAGS)
+	$(CXX) $^ -o $@  $(LDFLAGS) 
 
 %.o: %.cc
-	$(CXX) -c $< -o $@  $(CXXFLAGS) 
+	$(CXX) -c $< -o $@  $(CXXFLAGS)
 
 
 dist_Icl.o: include/smallca.h include/normalization.h

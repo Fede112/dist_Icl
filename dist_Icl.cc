@@ -19,6 +19,12 @@
 #define CONSUMER_THREADS 8
 #define MAX_qID 2353198020
 
+#ifdef DIAGONAL
+#define COUNT_FACTOR 2
+#else
+#define COUNT_FACTOR 1
+#endif
+
 // using namespace std;
 
 typedef std::map<uint32_t, std::map<uint32_t, double> >  map2_t;
@@ -167,10 +173,13 @@ void *producer(void *qs)
 
                         auto qID1 = std::min(pA->qID, pB->qID);
                         auto qID2 = std::max(pA->qID, pB->qID);
-                        if (qID1 == qID2) continue;
+
+                        #ifdef DIAGONAL
+                        if (qID1 == qID2) {continue;}
+                        #endif
                         
                         auto norm = std::min(pA->qSize, pB->qSize);
-                        auto pair = MatchedPair(qID1, qID2, 1./norm);
+                        auto pair = MatchedPair(qID1, qID2, 1./(COUNT_FACTOR*norm));
 
 
                         // decide to which queue the pair goes
