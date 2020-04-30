@@ -11,6 +11,7 @@
 
 #include <pthread.h>
 #include <semaphore.h>
+#include <thread>
 
 #include "smallca.h"
 #include "normalization.h"
@@ -18,9 +19,16 @@
 
 
 #define LOCAL_BUFFER_SIZE 10000
-#define PRODUCER_THREADS 1
+#define PRODUCER_THREADS 2
 #define CONSUMER_THREADS 8
 #define MAX_qID 2353198020
+
+#ifdef DIAGONAL
+#define COUNT_FACTOR 2
+#else
+#define COUNT_FACTOR 1
+#endif
+
 
 using namespace moodycamel;
 // using namespace std;
@@ -162,18 +170,20 @@ void *producer(void *qs)
     uint64_t linesA = partIndices[rank+1][0] - partIndices[rank][0];
     uint64_t linesB = partIndices[rank+1][1] - partIndices[rank][1];
     
+    // std::cout << "linesA: " << linesA << ' ' << rank << '\n';
+    // std::cout << "linesB: " << linesB << ' ' << rank << '\n';
     
     // internal buffers
     uint64_t localBufferSize {LOCAL_BUFFER_SIZE}; 
     uint64_t localBufferIndex[CONSUMER_THREADS] = {0};
-    MatchedPair localBuffer[CONSUMER_THREADS][localBufferSize] = {MatchedPair()};
+    // MatchedPair localBuffer[CONSUMER_THREADS][localBufferSize] = {MatchedPair()};
     
 
-    // MatchedPair **localBuffer = new MatchedPair* [CONSUMER_THREADS];
-    // for(uint32_t i = 0; i < CONSUMER_THREADS; ++i) 
-    // {
-    //     localBuffer[i] = new MatchedPair[LOCAL_BUFFER_SIZE]();
-    // }
+    MatchedPair **localBuffer = new MatchedPair* [CONSUMER_THREADS];
+    for(uint32_t i = 0; i < CONSUMER_THREADS; ++i) 
+    {
+        localBuffer[i] = new MatchedPair[LOCAL_BUFFER_SIZE]();
+    }
    
 
     SmallCA * alA = (SmallCA *) bufferA  + partIndices[rank][0];  //pointer to SmallCA to identify bufferA, i.e. the main file
@@ -227,8 +237,12 @@ void *producer(void *qs)
                         auto qID1 = std::min(pA->qID, pB->qID);
                         auto qID2 = std::max(pA->qID, pB->qID);
                         auto norm = std::min(pA->qSize, pB->qSize);
+                        #ifdef DIAGONAL
+                        if (qID1 == qID2) continue;
+                        #endif
+
+                        auto pair = MatchedPair(qID1, qID2, 1./(COUNT_FACTOR*norm));
                         // auto norm = 1.;
-                        auto pair = MatchedPair(qID1, qID2, 1./norm);
             
                         // decide to which queue the pair goes
                         int tidx = CONSUMER_THREADS - 1;
@@ -272,8 +286,10 @@ void *producer(void *qs)
     //     delete [] localBuffer[i];
     // }
     // delete [] localBuffer;
-    
+    // std::chrono::milliseconds dura( 2000 );
+    // std::this_thread::sleep_for( dura );
 
+    // std::cout << "Done, rank: " << rank << '\n';
     pthread_mutex_lock(&doneLock);
     ++done;
     pthread_mutex_unlock(&doneLock);
@@ -465,14 +481,14 @@ int main(int argc, char** argv) {
 
 
     // Consumer threads
-    pthread_t consumerThreads[CONSUMER_THREADS];
-    for (int i = 0; i < CONSUMER_THREADS; ++i)
-    {
-        // Create attributes
-        pthread_attr_t attr;
-        pthread_attr_init(&attr);
-        pthread_create(&consumerThreads[i], &attr, consumer, &queues);
-    } 
+    // pthread_t consumerThreads[CONSUMER_THREADS];
+    // for (int i = 0; i < CONSUMER_THREADS; ++i)
+    // {
+    //     // Create attributes
+    //     pthread_attr_t attr;
+    //     pthread_attr_init(&attr);
+    //     pthread_create(&consumerThreads[i], &attr, consumer, &queues);
+    // } 
 
     /* Producer-consumer running */
 
@@ -484,11 +500,13 @@ int main(int argc, char** argv) {
     }
 
     std::cout << "PRODUCERS DONE!" << '\n';
+
+    exit(0);
     auto t_producer = std::chrono::high_resolution_clock::now();   
-    for (int i = 0; i < CONSUMER_THREADS; ++i)
-    {
-        pthread_join(consumerThreads[i], NULL);    
-    }
+    // for (int i = 0; i < CONSUMER_THREADS; ++i)
+    // {
+    //     pthread_join(consumerThreads[i], NULL);    
+    // }
 
     auto t_consumer = std::chrono::high_resolution_clock::now();   
     auto diff_cons_prod = std::chrono::duration_cast<std::chrono::milliseconds>
