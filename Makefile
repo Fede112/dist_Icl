@@ -23,7 +23,8 @@ $(EXE): $(OBJS)
 dist_Icl.o: include/smallca.h include/normalization.h
 src/normalization.o: include/smallca.h include/normalization.h
 
-
+diagonal:CXXFLAGS+= -DDIAGONAL
+diagonal: default
 
 run:$(EXE)
 	./$(EXE) ./data_qsize/BIG1_10e5.bin  ./data_qsize/BIG2_10e5.bin
