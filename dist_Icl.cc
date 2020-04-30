@@ -60,8 +60,8 @@ char * bufferA{NULL}, * bufferB{NULL};
 uint64_t totalLinesA{0}, totalLinesB{0};
 
 // global flag to terminate consumers
-uint32_t done{0};
-pthread_mutex_t doneLock = PTHREAD_MUTEX_INITIALIZER;
+std::atomic<int> doneProducers(0);
+
 
 // producer rank
 uint32_t pRankCount{0};
@@ -114,7 +114,7 @@ void balanced_partition(std::array <uint64_t, CONSUMER_THREADS - 1> & array)
 }
 
 // void files_partition(uint64_t (&partIndices)[PRODUCER_THREADS+1][2])
-void files_partition(std::array<std::array<uint64_t, 2>, PRODUCER_THREADS> & partIndices, SmallCA* bufferA, SmallCA* bufferB)
+void files_partition(std::array<std::array<uint64_t, 2>, PRODUCER_THREADS + 1> & partIndices, SmallCA* bufferA, SmallCA* bufferB)
 // finds the indices of the partitions for bufferA and bufferB
 {
 
@@ -164,21 +164,16 @@ void *producer(void *qs)
     pthread_mutex_unlock(&pRankLock);
 
     // find the partition of file A and B to analize
-    std::array<std::array<uint64_t, 2>, PRODUCER_THREADS> partIndices;
+    std::array<std::array<uint64_t, 2>, PRODUCER_THREADS + 1> partIndices;
     files_partition(partIndices, (SmallCA*) bufferA, (SmallCA*) bufferB);
 
     uint64_t linesA = partIndices[rank+1][0] - partIndices[rank][0];
     uint64_t linesB = partIndices[rank+1][1] - partIndices[rank][1];
-    
-    // std::cout << "linesA: " << linesA << ' ' << rank << '\n';
-    // std::cout << "linesB: " << linesB << ' ' << rank << '\n';
-    
+        
     // internal buffers
     uint64_t localBufferSize {LOCAL_BUFFER_SIZE}; 
     uint64_t localBufferIndex[CONSUMER_THREADS] = {0};
     // MatchedPair localBuffer[CONSUMER_THREADS][localBufferSize] = {MatchedPair()};
-    
-
     MatchedPair **localBuffer = new MatchedPair* [CONSUMER_THREADS];
     for(uint32_t i = 0; i < CONSUMER_THREADS; ++i) 
     {
@@ -268,6 +263,7 @@ void *producer(void *qs)
                 }
             }            
         }   
+        if (posA == 1 && rank == 0) std::cout << "Done, rank: " << rank << '\n';
     }
 
 
@@ -281,18 +277,13 @@ void *producer(void *qs)
         queues[i].enqueue_bulk(localBuffer[i], LOCAL_BUFFER_SIZE);
     }
 
-    // for(uint32_t i = 0; i < CONSUMER_THREADS; ++i) 
-    // {
-    //     delete [] localBuffer[i];
-    // }
-    // delete [] localBuffer;
-    // std::chrono::milliseconds dura( 2000 );
-    // std::this_thread::sleep_for( dura );
-
-    // std::cout << "Done, rank: " << rank << '\n';
-    pthread_mutex_lock(&doneLock);
-    ++done;
-    pthread_mutex_unlock(&doneLock);
+    for(uint32_t i = 0; i < CONSUMER_THREADS; ++i) 
+    {
+        delete [] localBuffer[i];
+    }
+    delete [] localBuffer;
+    
+    doneProducers.fetch_add(1, std::memory_order_release);
     pthread_exit(NULL);
 
 }
@@ -304,68 +295,38 @@ void *consumer(void *qs)
     ++cRankCount;
     pthread_mutex_unlock(&cRankLock);
     
+    // Access queue corresponding to the rank of the consumer
     ConcurrentQueue<MatchedPair> * queue = ((ConcurrentQueue<MatchedPair>*) qs) + rank;
 
-    // std::cout << "Hi from consumer thread: " << rank << std::endl;
+    // MatchedPair pairs[LOCAL_BUFFER_SIZE];
+    MatchedPair *pairs = new MatchedPair [LOCAL_BUFFER_SIZE]();
+    
 
-    while(1)
-    {
-
-        MatchedPair pairs[LOCAL_BUFFER_SIZE];
-
-        if (queue->try_dequeue_bulk(pairs, LOCAL_BUFFER_SIZE))
+    bool itemsLeft;
+    do {
+        // It's important to fence (if the producers have finished) *before* dequeueing
+        itemsLeft = doneProducers.load(std::memory_order_acquire) != PRODUCER_THREADS;
+        while (queue->try_dequeue_bulk(pairs, LOCAL_BUFFER_SIZE)) 
+        {
+            itemsLeft = true;
+            // consume dequeue data
             for (int i = 0; i < LOCAL_BUFFER_SIZE; ++i)
             {
                 vec_maps[rank][ pairs[i].ID1 ][ pairs[i].ID2 ] += pairs[i].distance;
             }
-
-        pthread_mutex_lock(&doneLock);
-        if (done == PRODUCER_THREADS)
-        {
-            pthread_mutex_unlock(&doneLock);
-            while (queue->try_dequeue_bulk(pairs, LOCAL_BUFFER_SIZE))
-            {
-                for (int i = 0; i < LOCAL_BUFFER_SIZE; ++i)
-                {
-                    vec_maps[rank][ pairs[i].ID1 ][ pairs[i].ID2 ] += pairs[i].distance;
-                }
-                
-            }
-
-            // output per thread
-            // std::string output = "output_" + std::to_string(rank) + ".bin";
-            // auto outfile = std::fstream(output, std::ios::out | std::ios::binary);
-            // MatchedPair tmp;
-            // for (auto itr_out = vec_maps[rank].cbegin(); itr_out != vec_maps[rank].cend(); ++itr_out) 
-            // { 
-            //     if (itr_out->first == 0) {continue;}
-            //     for (auto itr_in = itr_out->second.cbegin(); itr_in != itr_out->second.cend(); ++itr_in)
-            //     {   
-            //         tmp.ID1 = itr_out->first;
-            //         tmp.ID2 = itr_in->first;
-            //         tmp.distance = itr_in->second;
-            //         outfile.write((char*)&tmp, sizeof(MatchedPair));
-            //     }   
-            // }
-            // outfile.close();
-
-            // terminate thread
-            pthread_exit(NULL);
         }
-        pthread_mutex_unlock(&doneLock);
+    } while (itemsLeft);
+    
 
-    }
+    delete[] pairs;
+    // terminate thread
+    pthread_exit(NULL);
 
 }
 
 
-
 //_______________________________________________________________________________________________________//
 /////////////////////////////////   M   A   I   N    //////////////////////////////////////////////////////
-
-
-// USAGE:  ./a.out  input1 input2 recovery maxhours > output
-
 
 
 int main(int argc, char** argv) {
@@ -481,14 +442,14 @@ int main(int argc, char** argv) {
 
 
     // Consumer threads
-    // pthread_t consumerThreads[CONSUMER_THREADS];
-    // for (int i = 0; i < CONSUMER_THREADS; ++i)
-    // {
-    //     // Create attributes
-    //     pthread_attr_t attr;
-    //     pthread_attr_init(&attr);
-    //     pthread_create(&consumerThreads[i], &attr, consumer, &queues);
-    // } 
+    pthread_t consumerThreads[CONSUMER_THREADS];
+    for (int i = 0; i < CONSUMER_THREADS; ++i)
+    {
+        // Create attributes
+        pthread_attr_t attr;
+        pthread_attr_init(&attr);
+        pthread_create(&consumerThreads[i], &attr, consumer, &queues);
+    } 
 
     /* Producer-consumer running */
 
@@ -501,12 +462,11 @@ int main(int argc, char** argv) {
 
     std::cout << "PRODUCERS DONE!" << '\n';
 
-    exit(0);
     auto t_producer = std::chrono::high_resolution_clock::now();   
-    // for (int i = 0; i < CONSUMER_THREADS; ++i)
-    // {
-    //     pthread_join(consumerThreads[i], NULL);    
-    // }
+    for (int i = 0; i < CONSUMER_THREADS; ++i)
+    {
+        pthread_join(consumerThreads[i], NULL);    
+    }
 
     auto t_consumer = std::chrono::high_resolution_clock::now();   
     auto diff_cons_prod = std::chrono::duration_cast<std::chrono::milliseconds>
