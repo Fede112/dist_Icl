@@ -18,7 +18,7 @@
 
 
 #define LOCAL_BUFFER_SIZE 10000
-#define PRODUCER_THREADS 2
+#define PRODUCER_THREADS 1
 #define CONSUMER_THREADS 8
 #define MAX_qID 2353198020
 
@@ -41,8 +41,8 @@ struct MatchedPair
     // MatchedPair( uint32_t id1, uint32_t id2, double d):   ID2(id2), ID1(id1), distance(d) {}
 };
 
-// typedef std::map<uint32_t, std::map<uint32_t, double> >  map2_t;
-typedef std::unordered_map<uint32_t, std::unordered_map<uint32_t, double> >  map2_t;
+typedef std::map<uint32_t, std::map<uint32_t, double> >  map2_t;
+// typedef std::unordered_map<uint32_t, std::unordered_map<uint32_t, double> >  map2_t;
 
 //---------------------------------------------------------------------------------------------------------
 // GLOBAL VARIABLES
@@ -392,7 +392,8 @@ int main(int argc, char** argv) {
     
     ////////////////////////////////////////////////////////////////////////
 
-
+    std::cout << "producers: " << PRODUCER_THREADS << '\n';
+    std::cout << "consumers: " << CONSUMER_THREADS << '\n';
 
     // OPEN THE TWO FILES, READ BOTH'S FIST LINE, FIND SMALLEST sID    
     // input (contain clustered alignments); say "B" files (B as Block, eaach block contains data foro
