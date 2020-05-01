@@ -1,6 +1,8 @@
 #include <iostream>
 #include <fstream>
 #include <unistd.h> // getopt
+#include <algorithm>
+#include <assert.h>
 
 #include "smallca.h"
 #include "normalization.h"
@@ -53,7 +55,10 @@ int main(int argc, char** argv)
     load_txt(input, clusterAlign, bufferLen);
     for (int i = 0; i < 10; ++i){printSCA(clusterAlign[i]);}
     std::cout << '\n';  
-
+    
+    // sort wrt qID+center
+    radix_sort((unsigned char*) clusterAlign, bufferLen, 16, 4, 0);
+    assert( std::is_sorted(clusterAlign, clusterAlign+bufferLen, compare_qID()) );
 
     // calculate qSize values
     compute_cluster_size(clusterAlign, bufferLen);
