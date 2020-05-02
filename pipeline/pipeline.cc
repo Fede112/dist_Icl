@@ -53,8 +53,6 @@ int main(int argc, char** argv)
     // load txt into SmallCA[] buffer: 
     //  qID*100 + center ; qSize included
     load_txt(input, clusterAlign, bufferLen);
-    for (int i = 0; i < 10; ++i){printSCA(clusterAlign[i]);}
-    std::cout << '\n';  
     
     // sort wrt qID+center
     radix_sort((unsigned char*) clusterAlign, bufferLen, 16, 4, 0);
@@ -62,13 +60,9 @@ int main(int argc, char** argv)
 
     // calculate qSize values
     compute_cluster_size(clusterAlign, bufferLen);
-    for (int i = 0; i < 10; ++i){printSCA(clusterAlign[i]);}
-    std::cout << '\n';  
 
     // sort back wrt sID
     radix_sort((unsigned char*) clusterAlign, bufferLen, 16, 4, 8);
-    for (int i = 0; i < 10; ++i){printSCA(clusterAlign[i]);}
-    std::cout << '\n';  
     
 
     std::ofstream out(output, std::ios::binary);
