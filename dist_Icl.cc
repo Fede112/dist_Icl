@@ -41,15 +41,26 @@ struct MatchedPair
 {
     uint32_t ID1;
     uint32_t ID2;
-    double distance;
+    uint32_t normFactor;
+    // double distance;
 
-    MatchedPair(): ID1(0), ID2(0), distance(0) {}
-    MatchedPair(uint32_t id1, uint32_t id2, double d):  ID1(id1), ID2(id2), distance(d) {}
-    // MatchedPair(): ID2(0), ID1(0),  distance(0) {}
-    // MatchedPair( uint32_t id1, uint32_t id2, double d):   ID2(id2), ID1(id1), distance(d) {}
+    MatchedPair()=default;
+    MatchedPair(uint32_t id1, uint32_t id2, uint32_t n):  ID1(id1), ID2(id2), normFactor(n) {}
 };
 
-typedef std::map<uint32_t, std::map<uint32_t, double> >  map2_t;
+
+struct Ratio
+{
+    uint32_t num;
+    uint32_t denom;
+    
+    Ratio()=default;
+    Ratio(uint32_t n, uint32_t d):  num(n), denom(d) {}
+
+    inline double as_double() const {return (double)num/denom;}
+};
+
+typedef std::map<uint32_t, std::map<uint32_t, Ratio> >  map2_t;
 // typedef std::unordered_map<uint32_t, std::unordered_map<uint32_t, double> >  map2_t;
 
 //---------------------------------------------------------------------------------------------------------
@@ -61,7 +72,6 @@ uint64_t totalLinesA{0}, totalLinesB{0};
 
 // global flag to terminate consumers
 std::atomic<int> doneProducers(0);
-
 
 // producer rank
 uint32_t pRankCount{0};
@@ -173,11 +183,10 @@ void *producer(void *qs)
     // internal buffers
     uint64_t localBufferSize {LOCAL_BUFFER_SIZE}; 
     uint64_t localBufferIndex[CONSUMER_THREADS] = {0};
-    // MatchedPair localBuffer[CONSUMER_THREADS][localBufferSize] = {MatchedPair()};
     MatchedPair **localBuffer = new MatchedPair* [CONSUMER_THREADS];
     for(uint32_t i = 0; i < CONSUMER_THREADS; ++i) 
     {
-        localBuffer[i] = new MatchedPair[LOCAL_BUFFER_SIZE]();
+        localBuffer[i] = new MatchedPair[LOCAL_BUFFER_SIZE]{};
     }
    
 
@@ -232,12 +241,12 @@ void *producer(void *qs)
                         auto qID1 = std::min(pA->qID, pB->qID);
                         auto qID2 = std::max(pA->qID, pB->qID);
                         auto norm = std::min(pA->qSize, pB->qSize);
+                        // auto norm = 1.;
                         #ifdef DIAGONAL
                         if (qID1 == qID2) continue;
                         #endif
 
-                        auto pair = MatchedPair(qID1, qID2, 1./(COUNT_FACTOR*norm));
-                        // auto norm = 1.;
+                        auto pair = MatchedPair( qID1, qID2, COUNT_FACTOR*norm );
             
                         // decide to which queue the pair goes
                         int tidx = CONSUMER_THREADS - 1;
@@ -300,7 +309,7 @@ void *consumer(void *qs)
 
     // MatchedPair pairs[LOCAL_BUFFER_SIZE];
     MatchedPair *pairs = new MatchedPair [LOCAL_BUFFER_SIZE]();
-    
+    std::pair<std::map<uint32_t,Ratio>::iterator,bool> ret;
 
     bool itemsLeft;
     do {
@@ -312,7 +321,15 @@ void *consumer(void *qs)
             // consume dequeue data
             for (int i = 0; i < LOCAL_BUFFER_SIZE; ++i)
             {
-                vec_maps[rank][ pairs[i].ID1 ][ pairs[i].ID2 ] += pairs[i].distance;
+                Ratio countNorm(1,pairs[i].normFactor);
+                ret = vec_maps[rank][ pairs[i].ID1 ].insert(std::pair<uint32_t, Ratio>(pairs[i].ID2, countNorm) );
+                if (ret.second==false)
+                {
+                    ret.first->second.num+=1;
+                }
+
+                // vec_maps[rank][ pairs[i].ID1 ][ pairs[i].ID2 ] += pairs[i].distance;
+
             }
         }
     } while (itemsLeft);
@@ -484,7 +501,8 @@ int main(int argc, char** argv) {
     // PRINT MAP
     std::cout << "Writing to " << output << "... ";
     auto outfile = std::fstream(output, std::ios::out | std::ios::binary);
-    MatchedPair tmp;
+    int outLineSize = 2*sizeof(uint32_t) + sizeof(double); 
+    char outLine[outLineSize];
 
     for (int tidx = 0; tidx < CONSUMER_THREADS; ++tidx)
     {
@@ -492,10 +510,11 @@ int main(int argc, char** argv) {
             if (itr_out->first == 0) {continue;}
             for (auto itr_in = itr_out->second.cbegin(); itr_in != itr_out->second.cend(); ++itr_in)
             {   
-                tmp.ID1 = itr_out->first;
-                tmp.ID2 = itr_in->first;
-                tmp.distance = itr_in->second;
-                outfile.write((char*)&tmp, sizeof(MatchedPair));
+                auto distance = itr_in->second.as_double();
+                std::memcpy(outLine, &itr_out->first, sizeof(uint32_t));
+                std::memcpy(outLine + sizeof(uint32_t), &itr_in->first, sizeof(uint32_t));
+                std::memcpy(outLine + 2*sizeof(uint32_t), &distance, sizeof(double));
+                outfile.write(outLine, outLineSize);
             }   
         } 
     }
