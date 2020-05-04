@@ -42,10 +42,19 @@ struct MatchedPair
     uint32_t ID1;
     uint32_t ID2;
     uint32_t normFactor;
-    // double distance;
 
     MatchedPair()=default;
     MatchedPair(uint32_t id1, uint32_t id2, uint32_t n):  ID1(id1), ID2(id2), normFactor(n) {}
+};
+
+struct NormalizedPair
+{
+    uint32_t ID1;
+    uint32_t ID2;
+    double distance;
+
+    NormalizedPair()=default;
+    NormalizedPair(uint32_t id1, uint32_t id2, uint32_t d):  ID1(id1), ID2(id2), distance(d) {}
 };
 
 
@@ -327,9 +336,6 @@ void *consumer(void *qs)
                 {
                     ret.first->second.num+=1;
                 }
-
-                // vec_maps[rank][ pairs[i].ID1 ][ pairs[i].ID2 ] += pairs[i].distance;
-
             }
         }
     } while (itemsLeft);
@@ -501,8 +507,7 @@ int main(int argc, char** argv) {
     // PRINT MAP
     std::cout << "Writing to " << output << "... ";
     auto outfile = std::fstream(output, std::ios::out | std::ios::binary);
-    int outLineSize = 2*sizeof(uint32_t) + sizeof(double); 
-    char outLine[outLineSize];
+    NormalizedPair outLine;
 
     for (int tidx = 0; tidx < CONSUMER_THREADS; ++tidx)
     {
@@ -511,10 +516,10 @@ int main(int argc, char** argv) {
             for (auto itr_in = itr_out->second.cbegin(); itr_in != itr_out->second.cend(); ++itr_in)
             {   
                 auto distance = itr_in->second.as_double();
-                std::memcpy(outLine, &itr_out->first, sizeof(uint32_t));
-                std::memcpy(outLine + sizeof(uint32_t), &itr_in->first, sizeof(uint32_t));
-                std::memcpy(outLine + 2*sizeof(uint32_t), &distance, sizeof(double));
-                outfile.write(outLine, outLineSize);
+                outLine.ID1 = itr_out->first; 
+                outLine.ID2 = itr_in->first;
+                outLine.distance = distance;  
+                outfile.write((char*)&outLine, sizeof(NormalizedPair));
             }   
         } 
     }
