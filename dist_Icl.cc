@@ -5,7 +5,6 @@
 #include <memory>
 #include <vector>
 #include <map>
-#include <unordered_map>
 #include <unistd.h> // getopt
 #include <cstring> // memcpy
 
@@ -43,8 +42,8 @@ struct MatchedPair
     uint32_t ID2;
     uint32_t normFactor;
 
-    MatchedPair()=default;
-    MatchedPair(uint32_t id1, uint32_t id2, uint32_t n):  ID1(id1), ID2(id2), normFactor(n) {}
+    MatchedPair(): ID1(0), ID2(0), normFactor(0){};
+    MatchedPair(uint32_t id1, uint32_t id2, uint32_t n): ID1(id1), ID2(id2), normFactor(n) {}
 };
 
 struct NormalizedPair
@@ -70,7 +69,6 @@ struct Ratio
 };
 
 typedef std::map<uint32_t, std::map<uint32_t, Ratio> >  map2_t;
-// typedef std::unordered_map<uint32_t, std::unordered_map<uint32_t, double> >  map2_t;
 
 //---------------------------------------------------------------------------------------------------------
 // GLOBAL VARIABLES
@@ -177,19 +175,20 @@ void *producer(void *qs)
 
     ConcurrentQueue<MatchedPair> *queues = (ConcurrentQueue<MatchedPair>*) qs;
 
+    // define own rank
     pthread_mutex_lock(&pRankLock);
     int rank = pRankCount;
     ++pRankCount;
     pthread_mutex_unlock(&pRankLock);
 
-    // find the partition of file A and B to analize
+    // find the partition of file A and file B to analize according to rank
     std::array<std::array<uint64_t, 2>, PRODUCER_THREADS + 1> partIndices;
     files_partition(partIndices, (SmallCA*) bufferA, (SmallCA*) bufferB);
 
     uint64_t linesA = partIndices[rank+1][0] - partIndices[rank][0];
     uint64_t linesB = partIndices[rank+1][1] - partIndices[rank][1];
         
-    // internal buffers
+    // define internal buffers
     uint64_t localBufferSize {LOCAL_BUFFER_SIZE}; 
     uint64_t localBufferIndex[CONSUMER_THREADS] = {0};
     MatchedPair **localBuffer = new MatchedPair* [CONSUMER_THREADS];
@@ -198,9 +197,10 @@ void *producer(void *qs)
         localBuffer[i] = new MatchedPair[LOCAL_BUFFER_SIZE]{};
     }
    
-
-    SmallCA * alA = (SmallCA *) bufferA  + partIndices[rank][0];  //pointer to SmallCA to identify bufferA, i.e. the main file
-    SmallCA * alB = (SmallCA *) bufferB  + partIndices[rank][1]; //pointer to SmallCA to bufferB, secondary file
+    // pointer to correspondant partition of fileA
+    SmallCA * alA = (SmallCA *) bufferA  + partIndices[rank][0];  
+    // pointer to correspondant partition of fileB
+    SmallCA * alB = (SmallCA *) bufferB  + partIndices[rank][1];
     
     
     uint64_t posA{0}, posB{0};
@@ -242,7 +242,8 @@ void *producer(void *qs)
             for (auto pA = init_subA; pA < alA; ++pA)
             {
                 for (auto pB = init_subB; pB < alB; ++pB)
-                {
+                {   
+                    // check if match
                     if( dist(pA,pB) < 0.2 ) 
                     {
 
@@ -281,17 +282,16 @@ void *producer(void *qs)
                 }
             }            
         }   
-        if (posA == 1 && rank == 0) std::cout << "Done, rank: " << rank << '\n';
     }
 
-
+    // Fill the remaining local buffer with zero elements (MatchedPair())
     for (int i = 0; i < CONSUMER_THREADS; ++i)
     {
         for (int j = localBufferIndex[i]; j < LOCAL_BUFFER_SIZE; ++j)
         {
             localBuffer[i][j]=MatchedPair();
         }
-        // std::cout << localBufferIndex[i] << std::endl;
+        // enqueue the last local buffer
         queues[i].enqueue_bulk(localBuffer[i], LOCAL_BUFFER_SIZE);
     }
 
