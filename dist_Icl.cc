@@ -53,7 +53,7 @@ struct NormalizedPair
     double distance;
 
     NormalizedPair()=default;
-    NormalizedPair(uint32_t id1, uint32_t id2, uint32_t d):  ID1(id1), ID2(id2), distance(d) {}
+    NormalizedPair(uint32_t id1, uint32_t id2, double d):  ID1(id1), ID2(id2), distance(d) {}
 };
 
 
