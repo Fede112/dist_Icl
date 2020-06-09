@@ -1,13 +1,13 @@
 *.out.*
 *.clean
 *.x
+*.o
+*.b
+*.bin
+*.txt
 outfile*
 ./data/
-*.bin
-*.b
+./data_qsize/
 
-
-# test files
 type_test.cc
-binary_test.cc
-
+# binary_test.cc
