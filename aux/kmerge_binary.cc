@@ -1,3 +1,12 @@
+/*******************************************************************************
+* k-way merge of dist_Icl output binary files.
+*
+* It can run using OpenMP.
+*
+* Important: files need to be sorted in order for the merge to succeed!
+******************************************************************************/
+
+
 #include <iostream>
 #include <fstream>
 #include <iterator>
@@ -6,7 +15,7 @@
 #include <list>
 #include <random>
 #include <functional>
-#include <math.h>       /* log2 */
+#include <math.h>    
 #include <unistd.h> // getopt
  
 #include "smallca.h"

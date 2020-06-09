@@ -23,13 +23,21 @@
 
 ### TODO list
 
-- [ ] Clean up git (concurrent to master)
+- [ ] Change metaclustering ouput
+
+- [ ] Run it on the big data set to test times (results are not important yet)
+
+- [ ] Consistency test: P33 comparisson
+
+- [ ] Run on Elena's small dataset
+
+- [ ] Clean up git (converge to master)
+
 - [ ] **Major modification**: map of maps is not the most efficient container. For counting it is probably much faster to use unordered_map and afterwards sort using `radix_sort` 
+
 - [ ] **Major modification**: it is probably more efficient to keep qSize in a separate container (unordered_map) and normalize the distance of each pair after the producer threads are done.
   * avoid norm calculation in producer
   * The qSize search is done in parallel by each consumer
-
-- [ ] 
 
 - [ ] Add unit tests
 
@@ -52,7 +60,12 @@ infile.read(reinterpret_cast<char*>(buf.data()), buf.size()*sizeof(double)); // 
 
 - [ ] avoid using PRODUCER_THREADS and CONSUMER_THREADS as #define (not sure of this change)
 
-  
+
+
+### Output of meta clustering 
+
+* Output: uniprotID sstart send ML (Meta cluster label)
+* Validation:
 
 ### Further exploring
 

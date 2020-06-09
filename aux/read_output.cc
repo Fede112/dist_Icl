@@ -1,52 +1,64 @@
-#include <fstream>
-#include <vector>
-#include <iostream>
+/*******************************************************************************
+* Reads dist_Icl binary output and outputs it to terminal
+* 
+* The output consists of 3 columns: 
+* queryID*100 + center, searchID (s), search start (ss), search end (se)
+******************************************************************************/
 
-#include "smallca.h"
-#include "cxxopts.hpp"
+#include <fstream>
+#include <iostream>
+#include <unistd.h> // getopt
+#include <vector>
+
 
 int main(int argc, char** argv)
 {
+    //-------------------------------------------------------------------------
+    // Argument parser
+    //-------------------------------------------------------------------------
 
+    int opt;
+    std::string inFilename;
 
-    ////////////////////////////////////////////////////////////////////////
-    // Args parser (I tried a new library but I am not convinced)
-
-    cxxopts::Options options("Reads binary output file", 
-        "Reads dist_Icl binary output file and outputs it to terminal.\n\n"
-        "Output has 3 columns q*100+c, s, ss, se.\n");
-
-    std::string input;
-    options.add_options()
-        ("h,help", "Print usage")
-        ("i,input", "Input file path", cxxopts::value<std::string>())
-    ;
-
-    
-    auto args = options.parse(argc, argv);
-
-
-    if (args.count("help"))
+    while ((opt = getopt(argc, argv, "ho:")) != -1) 
     {
-      std::cout << options.help() << std::endl;
-      exit(0);
+        switch (opt) 
+        {
+        // case 'o':
+        //     outFilename = optarg;
+        //     break;
+        case 'h':
+            // go to default
+            std::cout << "Reads dist_Icl binary output file and outputs it to terminal." << std::endl;
+            std::cout << "Usage: " << argv[0] << " file.bin" << std::endl;
+            break;
+
+        default: /* '?' */
+            std::cout << "Usage: " << argv[0] << " file.bin" << std::endl;
+            exit(EXIT_FAILURE);
+        }
     }
-    if (args.count("input")==1)
-        input = args["input"].as<std::string>();
+
+    if (optind != argc - 1) 
+    {
+        std::cerr << "Expected single argument after options." << std::endl;
+        exit(EXIT_FAILURE);
+    }
     else
     {
-        std::cout << "Missing input flag: -i <filepath>" << std::endl;
-        exit(1);
+        inFilename = argv[optind];
+        std::cout << "Input: " << inFilename << std::endl;
     }
-    ////////////////////////////////////////////////////////////////////////
 
-
+    //-------------------------------------------------------------------------
     
-    std::ifstream infile (input, std::ifstream::binary);
+    std::ifstream infile (inFilename, std::ifstream::binary);
     uint64_t length = 0;
     char * buffer = NULL;
     uint32_t * pInteger = NULL;
     double * pDouble = NULL;
+
+    // read file
     if (infile) 
     {
         // get length of file:
@@ -55,8 +67,6 @@ int main(int argc, char** argv)
         infile.seekg (0, infile.beg);
 
         buffer = new char [length];
-        // p = (unsigned int*) buffer;
-        // pos = (unsigned short*) buffer;
         
         std::cerr << "Reading " << length << " characters... ";
         // read data as a block:
@@ -68,13 +78,12 @@ int main(int argc, char** argv)
     }
     else
     {
-      std::cout << "error: only " << infile.gcount() << " could be read";
+      std::cout << "error: only " << infile.gcount() << " could be read \n";
     }
     infile.close();
     
     // each line has 3 unsigned int entries
     uint32_t lines = length/(2*sizeof(uint32_t) + sizeof(double));
-    std::cerr << lines << std::endl;
 
     for (uint64_t i = 0; i < lines; ++i)
     {

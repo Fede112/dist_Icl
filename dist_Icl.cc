@@ -1,15 +1,14 @@
-#include <iostream>
-#include <fstream>
 #include <chrono>
+#include <cstring> // memcpy
+#include <fstream>
+#include <iostream>
+#include <map>
 #include <math.h>
 #include <memory>
-#include <vector>
-#include <map>
 #include <unistd.h> // getopt
-#include <cstring> // memcpy
+#include <vector>
 
 #include <pthread.h>
-#include <semaphore.h>
 #include <thread>
 
 #include "smallca.h"
@@ -30,7 +29,6 @@
 
 
 using namespace moodycamel;
-// using namespace std;
 
 //---------------------------------------------------------------------------------------------------------
 // GLOBAL TYPES
@@ -42,7 +40,7 @@ struct MatchedPair
     uint32_t ID2;
     uint32_t normFactor;
 
-    MatchedPair(): ID1(0), ID2(0), normFactor(0){};
+    MatchedPair(): ID1{0}, ID2{0}, normFactor{0}{};
     MatchedPair(uint32_t id1, uint32_t id2, uint32_t n): ID1(id1), ID2(id2), normFactor(n) {}
 };
 
@@ -69,6 +67,9 @@ struct Ratio
 };
 
 typedef std::map<uint32_t, std::map<uint32_t, Ratio> >  map2_t;
+
+
+
 
 //---------------------------------------------------------------------------------------------------------
 // GLOBAL VARIABLES
@@ -117,7 +118,6 @@ double dist(const SmallCA * i, const SmallCA * j){
 //---------------------------------------------------------------------------------------------------------
 // THREADS METHODS
 //---------------------------------------------------------------------------------------------------------
-
 
 void balanced_partition(std::array <uint64_t, CONSUMER_THREADS - 1> & array)
 // calculate the qIDs to equally distribute the pairs qID1-qID2 in each thread.

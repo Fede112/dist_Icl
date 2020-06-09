@@ -1,7 +1,13 @@
-#include "smallca.h"
+/*******************************************************************************
+* Auxiliary function to test kmerge_binary.cc
+******************************************************************************/
+
+
+#include <assert.h>     /* assert */
 #include <fstream>
 #include <libgen.h>
-#include <assert.h>     /* assert */
+
+#include "smallca.h"
 
 // // input (contain clustered alignments); say "B" files (B as Block, eaach block contains data foro
 //     std::ifstream infileA (argv[1], std::ifstream::binary);

@@ -1,8 +1,6 @@
 #include <iostream>
 #include <cstring> // memcpy
 #include <algorithm> // bounds
-// #include <cstddef>
-// #include <cstdint>
 
 #include "normalization.h"
 
