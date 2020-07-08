@@ -16,9 +16,6 @@
 #include "smallca.h"
 #include "normalization.h"
 
-//---------------------------------------------------------------------------------------------------------
-// ASCII TO BINARY - TEMPORARY FUNCTIONS TO FIX PIPELINE
-//---------------------------------------------------------------------------------------------------------
 
 uint64_t rows_txt(std::string fileName)
 {

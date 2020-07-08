@@ -9,7 +9,6 @@
 #include <vector>
 
 #include <pthread.h>
-// #include <threads>
 
 #include "smallca.h"
 #include "normalization.h"
@@ -30,9 +29,9 @@
 
 using namespace moodycamel;
 
-//---------------------------------------------------------------------------------------------------------
-// GLOBAL TYPES
-//---------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------
+// User defined types
+//-------------------------------------------------------------------------
 
 struct MatchedPair
 {
@@ -69,9 +68,9 @@ struct Ratio
 typedef std::map<uint32_t, std::map<uint32_t, Ratio> >  map2_t;
 
 
-//---------------------------------------------------------------------------------------------------------
-// GLOBAL VARIABLES
-//---------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------
+// Global variables
+//-------------------------------------------------------------------------
 
 char * bufferA{NULL}, * bufferB{NULL};
 uint64_t totalLinesA{0}, totalLinesB{0};
@@ -93,9 +92,9 @@ std::vector<map2_t> vec_maps(CONSUMER_THREADS);
 // qIDs_partition array for a balanced load among threads. You need (n-1) points to generate n partitions.
 std::array <uint64_t, CONSUMER_THREADS-1> qIDs_partition; 
 
-//---------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------
 // ALIGNMENTS DISTANCE on the SEARCH
-//---------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------
 double dist(const SmallCA * i, const SmallCA * j){
     uint16_t hi, lo;
     double inte, uni;
@@ -114,7 +113,7 @@ double dist(const SmallCA * i, const SmallCA * j){
 }
 
 //---------------------------------------------------------------------------------------------------------
-// THREADS METHODS
+// Thread methods
 //---------------------------------------------------------------------------------------------------------
 
 void balanced_partition(std::array <uint64_t, CONSUMER_THREADS - 1> & array)
@@ -352,8 +351,9 @@ void *consumer(void *qs)
 
 int main(int argc, char** argv) {
 
-    ////////////////////////////////////////////////////////////////////////
-    // Parser
+    //-------------------------------------------------------------------------
+    // Argument parser
+    //-------------------------------------------------------------------------
 
     int opt;
     std::string output{"output.bin"}; 
@@ -393,8 +393,7 @@ int main(int argc, char** argv) {
     std::cout << "producers: " << PRODUCER_THREADS << '\n';
     std::cout << "consumers: " << CONSUMER_THREADS << '\n';
 
-    // OPEN THE TWO FILES, READ BOTH'S FIST LINE, FIND SMALLEST sID    
-    // input (contain clustered alignments); say "B" files (B as Block, eaach block contains data foro
+    // Open both files containing clustered alignments
     std::ifstream infileA (input1, std::ifstream::binary);
     std::ifstream infileB (input2, std::ifstream::binary);
     unsigned long int bytesA{0}, bytesB{0};
@@ -460,8 +459,6 @@ int main(int argc, char** argv) {
         pthread_create(&producerThreads[i], &attr, producer, &queues);
     }
 
-
-
     // Consumer threads
     pthread_t consumerThreads[CONSUMER_THREADS];
     for (int i = 0; i < CONSUMER_THREADS; ++i)
@@ -473,7 +470,6 @@ int main(int argc, char** argv) {
     } 
 
     /* Producer-consumer running */
-
 
     // Join threads when finished
     for (int i = 0; i < PRODUCER_THREADS; ++i)
