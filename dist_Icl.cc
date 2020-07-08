@@ -9,7 +9,7 @@
 #include <vector>
 
 #include <pthread.h>
-#include <thread>
+// #include <threads>
 
 #include "smallca.h"
 #include "normalization.h"
@@ -67,8 +67,6 @@ struct Ratio
 };
 
 typedef std::map<uint32_t, std::map<uint32_t, Ratio> >  map2_t;
-
-
 
 
 //---------------------------------------------------------------------------------------------------------

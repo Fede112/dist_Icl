@@ -1,6 +1,7 @@
 #include <iostream>
 #include <array>
-#include "./include/smallca.h"
+#include "smallca.h"
+#include "normalization.h"
 
 int main(int argc, char const *argv[])
 {

@@ -32,8 +32,8 @@ int main(int argc, char** argv)
             outFilename = optarg;
             break;
         case 'h':
-            std::cout << "Converts dist_Icl input text file into binary format." << std::endl;
-            std::cout << "QueryID and center are combined into one column: qID*100+c." << std::endl;
+            std::cout << "Converts distance matrix text file into binary format." << std::endl;
+            std::cout << "Columns: ID1 ID2 distance" << std::endl;
             std::cout << "Usage: " << argv[0] << " file.txt [-o output binary file]" << std::endl;
             break;
 
@@ -54,14 +54,16 @@ int main(int argc, char** argv)
         std::cout << "Input: " << inFilename << std::endl;
     }
 
+    std::cout << "Output: " << outFilename << std::endl;
+
     //-------------------------------------------------------------------------
 
 
     std::ifstream in(inFilename);
     std::ofstream out(outFilename, std::ios::binary);
 
-    uint32_t q,s;
-    uint16_t * buff = new uint16_t[3];
+    uint32_t ID1,ID2;
+    double distance;
     std::string line;
     size_t num_lines=0;
 
@@ -71,12 +73,11 @@ int main(int argc, char** argv)
         ++num_lines;
         std::istringstream iss(line); // make fileline into stream
         //read from stream
-        iss >> q >> buff[2] >> s >> buff[0] >> buff[1];
-        q = q*100 + buff[2];
+        iss >> ID1 >> ID2 >> distance;
 
-        out.write((char*)&q, sizeof(uint32_t));
-        out.write((char*)&s, sizeof(uint32_t));
-        out.write((char*)buff, 2 * sizeof(uint16_t));
+        out.write((char*)&ID1, sizeof(uint32_t));
+        out.write((char*)&ID2, sizeof(uint32_t));
+        out.write((char*)&distance, sizeof(double));
 
     }
 

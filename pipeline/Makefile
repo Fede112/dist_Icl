@@ -8,7 +8,7 @@ LDFLAGS= -lpthread
 DEBUG= -g -ggdb
 
 EXE=pipeline.x
-OBJS=pipeline.o ../src/normalization.o ../src/ascii2binary.o
+OBJS=pipeline.o ../src/normalization.o
 
 default: $(EXE)
 
@@ -19,8 +19,7 @@ $(EXE): $(OBJS)
 %.o: %.cc
 	$(CXX) -c $< -o $@  $(CXXFLAGS) 
 
-
-pipeline.o: ../include/smallca.h ../include/normalization.h ../include/ascii2binary.h
+pipeline.o: ../include/smallca.h ../include/normalization.h
 ../src/normalization.o: ../include/smallca.h ../include/normalization.h 
 
 

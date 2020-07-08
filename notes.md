@@ -23,13 +23,17 @@
 
 ### TODO list
 
-- [ ] Change metaclustering ouput
+- [x] Change metaclustering ouput
 
-- [ ] Run it on the big data set to test times (results are not important yet)
+- [x] Run it on the big data set to test times (results are not important yet)
 
-- [ ] Consistency test: P33 comparisson
+- [x] Consistency test: P53 comparisson
 
-- [ ] Run on Elena's small dataset
+- [ ] Run Elena's code from primary clustering
+
+- [ ] map results with original input to check the ground truth
+
+- [ ] Merging the metaclusters
 
 - [ ] Clean up git (converge to master)
 
