@@ -240,14 +240,16 @@ void *producer(void *qs)
             {
                 for (auto pB = init_subB; pB < alB; ++pB)
                 {   
-                    // check if match
-                    if( dist(pA,pB) < 0.2 ) 
-                    {
 
+                    // check if match
+                    if( dist(pA,pB) <= 0.2 ) 
+                    {
 
                         auto qID1 = std::min(pA->qID, pB->qID);
                         auto qID2 = std::max(pA->qID, pB->qID);
                         auto norm = std::min(pA->qSize, pB->qSize);
+                
+
                         // auto norm = 1.;
                         #ifdef DIAGONAL
                         if (qID1 == qID2) continue;
@@ -328,6 +330,7 @@ void *consumer(void *qs)
             for (int i = 0; i < LOCAL_BUFFER_SIZE; ++i)
             {
                 Ratio countNorm(1,pairs[i].normFactor);
+
                 ret = vec_maps[rank][ pairs[i].ID1 ].insert(std::pair<uint32_t, Ratio>(pairs[i].ID2, countNorm) );
                 if (ret.second==false)
                 {
@@ -387,6 +390,18 @@ int main(int argc, char** argv) {
     std::cout << "Input 1: " <<  input1 << '\n';
     std::cout << "Input 2: " <<  input2 << '\n';
     std::cout << "Output: " <<  output << '\n';
+
+    if (input1.compare(input2) == 0 && COUNT_FACTOR != 2)
+    {
+        std::cerr << "Wrong version of code: this version works for processing different input files. " << '\n';
+        exit(EXIT_FAILURE);
+    }
+
+    if (input1.compare(input2) != 0 && COUNT_FACTOR == 2)
+    {
+        std::cerr << "Wrong version of code: this version works for processing same input files. " << '\n';
+        exit(EXIT_FAILURE);
+    }
     
     ////////////////////////////////////////////////////////////////////////
 
@@ -508,12 +523,13 @@ int main(int argc, char** argv) {
         for (auto itr_out = vec_maps[tidx].cbegin(); itr_out != vec_maps[tidx].cend(); ++itr_out) { 
             if (itr_out->first == 0) {continue;}
             for (auto itr_in = itr_out->second.cbegin(); itr_in != itr_out->second.cend(); ++itr_in)
-            {   
+            {        
                 auto distance = itr_in->second.as_double();
                 outLine.ID1 = itr_out->first; 
                 outLine.ID2 = itr_in->first;
                 outLine.distance = distance;  
                 outfile.write((char*)&outLine, sizeof(NormalizedPair));
+                
             }   
         } 
     }

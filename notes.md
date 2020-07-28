@@ -23,19 +23,23 @@
 
 ### TODO list
 
-- [x] Change metaclustering ouput
+- [x] Change metaclustering output
 
 - [x] Run it on the big data set to test times (results are not important yet)
 
 - [x] Consistency test: P53 comparisson
 
-- [ ] Run Elena's code from primary clustering
+- [x] Run Elena's code from primary clustering
+
+- [ ] 
 
 - [ ] map results with original input to check the ground truth
 
 - [ ] Merging the metaclusters
 
 - [ ] Clean up git (converge to master)
+
+- [ ] **modification**: remove `#ifdef DIAGONAL` and solve it just by comparing the input strings. You just add an if condition to the not diagonal code.
 
 - [ ] **Major modification**: map of maps is not the most efficient container. For counting it is probably much faster to use unordered_map and afterwards sort using `radix_sort` 
 

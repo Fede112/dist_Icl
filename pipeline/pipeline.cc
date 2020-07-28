@@ -95,14 +95,18 @@ int main(int argc, char** argv)
         }
     }
 
-    if (optind >= argc) 
+    if (optind != argc - 1) 
     {
-        fprintf(stderr, "Expected argument after options\n");
+        std::cerr << "Expected single argument after options." << std::endl;
         exit(EXIT_FAILURE);
     }
+    else
+    {
+        input = argv[optind];
+        std::cout << "Input: " << input << std::endl;
+        std::cout << "Output: " << output << std::endl;
+    }
 
-    printf("name argument = %s\n", argv[optind]);
-    input = argv[optind];
     
     //-------------------------------------------------------------------------
     
@@ -131,7 +135,7 @@ int main(int argc, char** argv)
     
 
     std::ofstream out(output, std::ios::binary);
-    std::cout << "sizeof SmallCA: " << sizeof(SmallCA) << std::endl;
+    // std::cout << "sizeof SmallCA: " << sizeof(SmallCA) << std::endl;
     out.write((char*)clusterAlign, bufferLen*sizeof(SmallCA));
     out.close();
 

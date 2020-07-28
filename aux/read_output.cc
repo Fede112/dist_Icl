@@ -47,7 +47,7 @@ int main(int argc, char** argv)
     else
     {
         inFilename = argv[optind];
-        std::cout << "Input: " << inFilename << std::endl;
+        std::cerr << "Input: " << inFilename << std::endl;
     }
 
     //-------------------------------------------------------------------------
