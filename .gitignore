@@ -6,8 +6,9 @@
 *.bin
 *.txt
 outfile*
-./data/
-./data_qsize/
+data/
+data_qsize/
+reference/
 
 type_test.cc
 # binary_test.cc

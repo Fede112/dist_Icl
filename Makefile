@@ -56,14 +56,9 @@ debug:
 
 # TESTS:
 
-test: output
+check: output
 
 output: $(EXE) aux
-	@echo "Output test..."
-	./$(EXE) ./data/BIG1_10e3.bin  ./data/BIG2_10e3.bin 0 0.02
-	./aux/read_output.x -i outfile.bin > ./test/out.txt
-	cmp ./test/out.txt ./test/reference/out_10e3.ref || rm -f ./test/out.txt outfile.bin | exit 1
-	@rm -f ./test/out.txt outfile.bin
-	@echo "Output test passed!"
+	./reference/output_test.sh
 
 .PHONY: default clean aux pipeline run debug test
