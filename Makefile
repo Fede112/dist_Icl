@@ -20,8 +20,8 @@ $(EXE): $(OBJS)
 	$(CXX) -c $< -o $@  $(CXXFLAGS) 
 
 
-dist_Icl.o: include/smallca.h include/normalization.h
-src/normalization.o: include/smallca.h include/normalization.h
+dist_Icl.o: include/datatypes.h include/normalization.h
+src/normalization.o: include/datatypes.h include/normalization.h
 
 
 diagonal:CXXFLAGS+= -DDIAGONAL
@@ -30,13 +30,10 @@ diagonal: default
 
 run:$(EXE)
 	./$(EXE) ./data_qsize/BIG1_10e5.bin  ./data_qsize/BIG2_10e5.bin
-# this is a minimsl run (parameter 0.01 means 0.01 hours) that starts from the recovery id 0 (i.e. from the very beginnig of the file)
-
 
 
 clean:
 	rm -rf *~ $(OBJS) *.x
-	$(MAKE) $(MFLAGS) clean  -C ./aux/
 	$(MAKE) $(MFLAGS) clean  -C ./pipeline/
 
 

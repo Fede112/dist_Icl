@@ -18,7 +18,7 @@
 #include <math.h>    
 #include <unistd.h> // getopt
  
-#include "smallca.h"
+#include "datatypes.h"
 
 
 template <typename Iterator, typename Comparator = std::less<>>

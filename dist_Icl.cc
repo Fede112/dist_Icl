@@ -10,7 +10,7 @@
 
 #include <pthread.h>
 
-#include "smallca.h"
+#include "datatypes.h"
 #include "normalization.h"
 #include "concurrentqueue.h"
 
@@ -32,38 +32,6 @@ using namespace moodycamel;
 //-------------------------------------------------------------------------
 // User defined types
 //-------------------------------------------------------------------------
-
-struct MatchedPair
-{
-    uint32_t ID1;
-    uint32_t ID2;
-    uint32_t normFactor;
-
-    MatchedPair(): ID1{0}, ID2{0}, normFactor{0}{};
-    MatchedPair(uint32_t id1, uint32_t id2, uint32_t n): ID1(id1), ID2(id2), normFactor(n) {}
-};
-
-struct NormalizedPair
-{
-    uint32_t ID1;
-    uint32_t ID2;
-    double distance;
-
-    NormalizedPair()=default;
-    NormalizedPair(uint32_t id1, uint32_t id2, double d):  ID1(id1), ID2(id2), distance(d) {}
-};
-
-
-struct Ratio
-{
-    uint32_t num;
-    uint32_t denom;
-    
-    Ratio()=default;
-    Ratio(uint32_t n, uint32_t d):  num(n), denom(d) {}
-
-    inline double as_double() const {return (double)num/denom;}
-};
 
 typedef std::map<uint32_t, std::map<uint32_t, Ratio> >  map2_t;
 
@@ -248,9 +216,9 @@ void *producer(void *qs)
                         auto qID1 = std::min(pA->qID, pB->qID);
                         auto qID2 = std::max(pA->qID, pB->qID);
                         auto norm = std::min(pA->qSize, pB->qSize);
+                        // auto norm = 1.;
                 
 
-                        // auto norm = 1.;
                         #ifdef DIAGONAL
                         if (qID1 == qID2) continue;
                         #endif
@@ -524,7 +492,7 @@ int main(int argc, char** argv) {
             if (itr_out->first == 0) {continue;}
             for (auto itr_in = itr_out->second.cbegin(); itr_in != itr_out->second.cend(); ++itr_in)
             {        
-                auto distance = itr_in->second.as_double();
+                auto distance = 1.- itr_in->second.as_double();
                 outLine.ID1 = itr_out->first; 
                 outLine.ID2 = itr_in->first;
                 outLine.distance = distance;  

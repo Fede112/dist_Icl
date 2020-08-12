@@ -35,9 +35,11 @@
 
 - [ ] map results with original input to check the ground truth
 
-- [ ] Merging the metaclusters
+- [x] Merging the metaclusters
 
 - [ ] Clean up git (converge to master)
+
+- [ ] **modification**: move MatchedPair, NormalizedPair and Ratio structs to a header file. NormalizedPair should be use in auxiliary functions: read_output.cc, transform_output.cc and others.
 
 - [ ] **modification**: remove `#ifdef DIAGONAL` and solve it just by comparing the input strings. You just add an if condition to the not diagonal code.
 

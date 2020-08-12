@@ -1,10 +1,3 @@
-/*******************************************************************************
-* Reads dist_Icl binary input and outputs it to terminal
-* 
-* The output consists of 3 columns: 
-* queryID*100 + center, searchID (s), search start (ss), search end (se)
-******************************************************************************/
-
 #include <fstream>
 #include <iostream>
 #include <unistd.h> // getopt
@@ -14,23 +7,23 @@
 
 int main(int argc, char** argv)
 {
-
     //-------------------------------------------------------------------------
     // Argument parser
     //-------------------------------------------------------------------------
 
     int opt;
-    std::string inFilename;
+    std::string inFilename, outFilename;
 
     while ((opt = getopt(argc, argv, "ho:")) != -1) 
     {
         switch (opt) 
         {
-        // case 'o':
-        //     outFilename = optarg;
-        //     break;
+        case 'o':
+            outFilename = optarg;
+            break;
         case 'h':
-            std::cout << "Reads dist_Icl binary input file and outputs it to terminal." << std::endl;
+            // go to default
+            std::cout << "Reads dist_Icl binary output file and modifies distance to be 1-distance." << std::endl;
             std::cout << "Usage: " << argv[0] << " file.bin" << std::endl;
             break;
 
@@ -48,50 +41,51 @@ int main(int argc, char** argv)
     else
     {
         inFilename = argv[optind];
-        std::cout << "Input: " << inFilename << std::endl;
+        std::cerr << "Input: " << inFilename << std::endl;
     }
 
     //-------------------------------------------------------------------------
 
-    
+
     std::ifstream infile (inFilename, std::ifstream::binary);
-    unsigned long int length = 0;
+    size_t bufferLen = 0;
     char * buffer = NULL;
-    SmallCA * sca = NULL;
+    NormalizedPair * pPair = NULL;
 
     // read file
     if (infile) 
     {
-        // get length of file:
+        // get bufferLen of file:
         infile.seekg (0, infile.end);
-        length = infile.tellg();
+        bufferLen = infile.tellg();
         infile.seekg (0, infile.beg);
 
-        buffer = new char [length];
+        buffer = new char [bufferLen];
         
-        std::cerr << "Reading " << length << " characters... ";
+        std::cerr << "Reading " << bufferLen << " characters... ";
         // read data as a block:
-        infile.read (buffer,length);
+        infile.read (buffer,bufferLen);
         std::cerr << "all characters read successfully. \n";
         
-        sca = (SmallCA*) buffer;
+        pPair = (NormalizedPair*) buffer;
     }
     else
     {
-      std::cout << "error: only " << infile.gcount() << " could be read";
+      std::cout << "error: only " << infile.gcount() << " could be read \n";
     }
     infile.close();
     
-    unsigned long int lines = length/sizeof(SmallCA);
+    // each line has 3 unsigned int entries
+    size_t lines = bufferLen/(sizeof(NormalizedPair));
 
-    for (unsigned long int i = 0; i < lines; ++i)
+    for (size_t i = 0; i < lines; ++i)
     {
-        printSCA(sca[i]);
+    	pPair->distance = 1.-pPair->distance;
+    	pPair++;
     }
-    
 
-    delete[] buffer;
-
-  return 0;
+    // std::cout << "Writing to " << output << "... ";
+    auto outFile = std::fstream(outFilename, std::ios::out | std::ios::binary);
+    outFile.write(buffer, bufferLen);
+    return 0;
 }
-

@@ -1,7 +1,7 @@
 #ifndef NORMALIZATION
 #define NORMALIZATION
 
-#include "smallca.h"
+#include "datatypes.h"
 
 
 // LSB radix sort of record with respect to specified key

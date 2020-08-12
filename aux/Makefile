@@ -8,7 +8,7 @@ LDFLAGS= # -lfmt
 DEBUG= -g -ggdb
 
 
-SRC=read_input.cc read_output.cc input2binary.cc output2binary.cc kmerge_binary.cc
+SRC=read_input.cc read_output.cc input2binary.cc output2binary.cc kmerge_binary.cc transform_output.cc
 
 kmerge_binary.x: CXXFLAGS+=-fopenmp
 
