@@ -4,7 +4,7 @@ SHELL=/bin/sh
 CXX=g++
 # CXXFLAGS= -Wall -Wextra -O3 -ffast-math -fexpensive-optimizations -msse3 
 CXXFLAGS= -O3 -std=c++14 -I ../include/ -Wall
-LDFLAGS= -lpthread
+LDFLAGS=
 DEBUG= -g -ggdb
 
 EXE=pipeline.x
@@ -19,8 +19,8 @@ $(EXE): $(OBJS)
 %.o: %.cc
 	$(CXX) -c $< -o $@  $(CXXFLAGS) 
 
-pipeline.o: ../include/smallca.h ../include/normalization.h
-../src/normalization.o: ../include/smallca.h ../include/normalization.h 
+pipeline.o: ../include/datatypes.h ../include/normalization.h
+../src/normalization.o: ../include/datatypes.h ../include/normalization.h 
 
 
 run:$(EXE)

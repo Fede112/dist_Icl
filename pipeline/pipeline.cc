@@ -13,8 +13,8 @@
 #include <sstream> // istringstream
 #include <unistd.h> // getopt
 
-#include "smallca.h"
-#include "normalization.h"
+#include <datatypes.h>
+#include <normalization.h>
 
 
 uint64_t rows_txt(std::string fileName)
@@ -81,6 +81,9 @@ int main(int argc, char** argv)
 
     while ((opt = getopt(argc, argv, "ho:")) != -1) 
     {
+        std::cout << "opt: " << opt << '\n';
+        std::cout << "argc: " << argc << '\n';
+        std::cout << "opt: " << opt << '\n';
         switch (opt) 
         {
         case 'o':
@@ -90,14 +93,15 @@ int main(int argc, char** argv)
             // go to default
 
         default: /* '?' */
-            fprintf(stderr, "Usage: %s input.txt -o output.bin \n", argv[0]);
+            fprintf(stderr, "Usage: %s input.txt [-o output.bin] \n", argv[0]);
             exit(EXIT_FAILURE);
         }
     }
 
     if (optind != argc - 1) 
     {
-        std::cerr << "Expected single argument after options." << std::endl;
+        std::cerr << "Please input file name." << std::endl;
+        fprintf(stderr, "Usage: %s input.txt [-o output.bin] \n", argv[0]);
         exit(EXIT_FAILURE);
     }
     else
@@ -109,7 +113,8 @@ int main(int argc, char** argv)
 
     
     //-------------------------------------------------------------------------
-    
+
+        
     SmallCA* clusterAlign;
     uint64_t bufferLen; 
 
