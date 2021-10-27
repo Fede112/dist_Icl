@@ -1,17 +1,73 @@
-/*******************************************************************************
-* Auxiliary function needed to make original input compatible with binary input.
-* 
-* Converts original dist_Icl input text file into binary format.
+/* -----------------------------------------------------------------------------
+* Temporary script to patch the differences between the output of the primary 
+* clustering algorithm and the input of the distance matrix (dist_Icl) algorithm
+* for metaclustering.
 *
-* QueryID and center are combined into one column. The output consists of 3 columns: 
-* queryID*100 + center, searchID (s), search start (ss), search end (se)
-******************************************************************************/
+* text input: queryID, center, searchID, searchStart, searchEnd
+* binary output: smallCA structure
+----------------------------------------------------------------------------- */
 
+#include <algorithm>
 #include <fstream>
 #include <iostream>
-#include <sstream>
-#include <stdio.h>
+#include <sstream> // istringstream
 #include <unistd.h> // getopt
+
+#include <normalization.h>
+#include <datatypes.h>
+
+
+uint64_t rows_txt(std::string fileName)
+{
+    std::ifstream inFile(fileName);
+    if (!inFile)
+        throw std::system_error(errno, std::system_category(), "failed to open "+ fileName);
+
+    uint64_t bufferLen =  std::count(std::istreambuf_iterator<char>(inFile), 
+        std::istreambuf_iterator<char>(), '\n');
+
+    inFile.close();
+    
+    // ++ because last \n could be missing
+    return ++bufferLen;; 
+
+}
+
+void load_txt(std::string fileName, SmallCA * clusterAlign, uint64_t & length)
+{
+    uint32_t query,search;
+    uint16_t center,sstart,send;
+
+    std::string line;
+    uint64_t numLine{0};
+
+    std::ifstream inFile(fileName);
+    if (!inFile)
+        throw std::system_error(errno, std::system_category(), "failed to open "+ fileName);
+   
+    std::ios::sync_with_stdio(false);
+    while (std::getline(inFile, line)) 
+    {
+        std::istringstream iss(line); // make fileline into stream
+        
+        iss >> query >> center >> search >> sstart >> send;
+        clusterAlign[ numLine ].qID = query*100 + center;
+        clusterAlign[ numLine ].qSize = 0; // compute it later
+        clusterAlign[ numLine ].sID = search;
+        clusterAlign[ numLine ].sstart = sstart;
+        clusterAlign[ numLine ].send = send;
+        ++numLine;
+    }
+
+
+    // bufferLen and numLine can differ in one
+    length = numLine;
+    inFile.close();
+    return;   
+}
+
+
+
 
 int main(int argc, char** argv)
 {
@@ -19,78 +75,76 @@ int main(int argc, char** argv)
     //-------------------------------------------------------------------------
     // Argument parser
     //-------------------------------------------------------------------------
-
     int opt;
-    std::string outFilename = {"output.bin"};
-    std::string inFilename;
+    std::string output{"output.bin"}; 
+    std::string input;
 
     while ((opt = getopt(argc, argv, "ho:")) != -1) 
     {
+        std::cout << "opt: " << opt << '\n';
+        std::cout << "argc: " << argc << '\n';
+        std::cout << "opt: " << opt << '\n';
         switch (opt) 
         {
         case 'o':
-            outFilename = optarg;
+            output = optarg;
             break;
         case 'h':
-            std::cout << "Converts dist_Icl input text file into binary format." << std::endl;
-            std::cout << "QueryID and center are combined into one column: qID*100+c." << std::endl;
-            std::cout << "Usage: " << argv[0] << " file.txt [-o output binary file]" << std::endl;
-            break;
+            // go to default
 
         default: /* '?' */
-            std::cout << "Usage: " << argv[0] << " file.txt [-o output binary file]" << std::endl;
+            fprintf(stderr, "Usage: %s input.txt [-o output.bin] \n", argv[0]);
             exit(EXIT_FAILURE);
         }
     }
 
     if (optind != argc - 1) 
     {
-        std::cerr << "Expected single argument after options." << std::endl;
+        std::cerr << "Please input file name." << std::endl;
+        fprintf(stderr, "Usage: %s input.txt [-o output.bin] \n", argv[0]);
         exit(EXIT_FAILURE);
     }
     else
     {
-        inFilename = argv[optind];
-        std::cout << "Input: " << inFilename << std::endl;
+        input = argv[optind];
+        std::cout << "Input: " << input << std::endl;
+        std::cout << "Output: " << output << std::endl;
     }
 
+    
     //-------------------------------------------------------------------------
 
+        
+    SmallCA* clusterAlign;
+    uint64_t bufferLen; 
 
-    std::ifstream in(inFilename);
-    std::ofstream out(outFilename, std::ios::binary);
-
-    uint32_t q,s;
-    uint16_t * buff = new uint16_t[3];
-    std::string line;
-    size_t num_lines=0;
-
-    // read file
-    while (std::getline(in, line)) 
-    {
-        ++num_lines;
-        std::istringstream iss(line); // make fileline into stream
-        //read from stream
-        iss >> q >> buff[2] >> s >> buff[0] >> buff[1];
-        q = q*100 + buff[2];
-
-        out.write((char*)&q, sizeof(uint32_t));
-        out.write((char*)&s, sizeof(uint32_t));
-        out.write((char*)buff, 2 * sizeof(uint16_t));
-
+    // define buffer
+    bufferLen = rows_txt(input); // counts every '\n'
+    std::cout << bufferLen << std::endl;
+    clusterAlign = new SmallCA [bufferLen];
+    
+    // load txt into SmallCA[] buffer: qID*100 + center ; qSize included  
+    load_txt(input, clusterAlign, bufferLen);
+    
+    // sort wrt qID+center
+    if (    !std::is_sorted( clusterAlign, clusterAlign+bufferLen, compare_qID() )    )
+    {   
+        radix_sort((unsigned char*) clusterAlign, bufferLen, 16, 4, 0);
     }
+    
+    // compute size of each primary cluster: qSize
+    compute_cluster_size(clusterAlign, bufferLen);
 
-    // if (in.bad()) {
-    //     // IO error
-    // } else if (!in.eof()) {
-    //     // format error (not possible with getline but possible with operator>>)
-    // } else {
-    //     // format error (not possible with getline but possible with operator>>)
-    //     // or end of file (can't make the difference)
-    // }
+    // sort back wrt sID
+    radix_sort((unsigned char*) clusterAlign, bufferLen, 16, 4, 8);
+    
 
-    std::cout << "Number of lines: " << num_lines << std::endl;
-    in.close();
+    std::ofstream out(output, std::ios::binary);
+    // std::cout << "sizeof SmallCA: " << sizeof(SmallCA) << std::endl;
+    out.write((char*)clusterAlign, bufferLen*sizeof(SmallCA));
     out.close();
+
+
+    delete[] clusterAlign;
     return 0;
 }

@@ -10,7 +10,7 @@
 #include <unistd.h> // getopt
 #include <vector>
 
-#include "datatypes.h"
+#include <datatypes.h>
 
 int main(int argc, char** argv)
 {

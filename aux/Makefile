@@ -10,15 +10,22 @@ DEBUG= -g -ggdb
 
 SRC=read_input.cc read_output.cc input2binary.cc output2binary.cc kmerge_binary.cc transform_output.cc
 
-kmerge_binary.x: CXXFLAGS+=-fopenmp
 
+OBJS=$(SRC:.cc=.o)
 EXE=$(SRC:.cc=.x)
 
 
 default: $(EXE)
 
-%.x:%.cc
-	$(CXX) $(CXXFLAGS) $< -o $@
+$(EXE): %.x : %.o
+	$(CXX) $^ -o $@  $(LDFLAGS)
+
+kmerge_binary.o: CXXFLAGS+=-fopenmp
+kmerge_binary.x: LDFLAGS+=-fopenmp
+input2binary.x: ../src/normalization.o
+
+%.o: %.cc
+	$(CXX) -c $< -o $@  $(CXXFLAGS) 
 
 
 # debug: CXXFLAGS += $(DEBUG)
@@ -27,6 +34,6 @@ default: $(EXE)
 # 	valgrind ./${EXE}
 
 clean:
-	rm -rf *~ *.o *.x
+	rm -rf *~ $(OBJS) $(EXE) ../src/normalization.o
 
 .PHONY: default clean
