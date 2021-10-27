@@ -1,12 +1,3 @@
-/*******************************************************************************
-* k-way merge of dist_Icl output binary files.
-*
-* It can run using OpenMP.
-*
-* Important: files need to be sorted in order for the merge to succeed!
-******************************************************************************/
-
-
 #include <iostream>
 #include <fstream>
 #include <iterator>
@@ -91,6 +82,10 @@ void kmerge(std::vector<Iterator> & partIndexes, Comparator cmp = Comparator() )
 
 int main(int argc, char *argv[])
 {
+
+    //-------------------------------------------------------------------------
+    // Argument parser
+
     int opt;
     std::string outFilename={"merged_output.bin"};
     std::vector<std::string> filenames;
@@ -106,14 +101,18 @@ int main(int argc, char *argv[])
             // go to default
 
         default: /* '?' */
-            fprintf(stderr, "Usage: %s file1 file2 ... [-o output merged file] \n",
-                    argv[0]);
+            std::cerr << "\nUsage: "<< argv[0] << " INPUT1 INPUT2 ... [-o OUTPUT] \n\n";
+            std::cerr << "\t INPUTs     list of files to be merged \n\n";
+            std::cerr << "\t -o OUTPUT  output filename (it will use a default name otherwise) \n\n";
+            std::cerr << "Description:\n\t k-way merge of dist_Icl output binary files.\n\n";
+            std::cerr << "\t Performance can be improved considerably if compiled with OpenMP.\n";
+            std::cerr << "\t Important: files need to be sorted wrt searchID in order for the merge to succeed!\n\n";
             exit(EXIT_FAILURE);
         }
     }
 
     if (optind >= argc) {
-        fprintf(stderr, "Expected argument after options\n");
+        fprintf(stderr, "Expected arguments after options\n");
         exit(EXIT_FAILURE);
     }
 
@@ -123,6 +122,8 @@ int main(int argc, char *argv[])
         filenames.push_back(argv[optind]);
         ++optind;
     }
+
+    //-------------------------------------------------------------------------
     
     std::vector<SmallCA*> indexes; 
     std::vector<std::ifstream> files; 
@@ -148,6 +149,7 @@ int main(int argc, char *argv[])
         else{std::cerr << "Cannot open file: " << filename << "\n";}
     }
     
+
     SmallCA * buffer = new SmallCA [totalLines];
     
     indexes.push_back(buffer);

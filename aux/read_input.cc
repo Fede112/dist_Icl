@@ -1,9 +1,9 @@
-/*******************************************************************************
-* Reads dist_Icl binary input and outputs it to terminal
-* 
-* The output consists of 3 columns: 
-* queryID*100 + center, searchID (s), search start (ss), search end (se)
-******************************************************************************/
+// -----------------------------------------------------------------------------
+// Reads dist_Icl binary input and outputs it to terminal
+// 
+// The output consists of 4 columns: 
+// queryID*100 + center, searchID (s), search start (ss), search end (se)
+// -----------------------------------------------------------------------------
 
 #include <fstream>
 #include <iostream>
@@ -30,18 +30,19 @@ int main(int argc, char** argv)
         //     outFilename = optarg;
         //     break;
         case 'h':
-            std::cout << "Reads dist_Icl binary input file and outputs it to terminal." << std::endl;
-            std::cout << "Usage: " << argv[0] << " file.bin" << std::endl;
-            break;
+            // go to default
 
         default: /* '?' */
-            std::cout << "Usage: " << argv[0] << " file.bin" << std::endl;
+            std::cout << "\nUsage: " << argv[0] << " INPUT \n\n";
+            std::cerr << "\t INPUT      input filename \n\n";
+            std::cerr << "Description:\n\t" << argv[0] << " reads dist_Icl binary input and outputs it to terminal.\n\n";
+            std::cerr << "\t input format: queryID+center, query size, searchID, searchStart, searchEnd.\n";
             exit(EXIT_FAILURE);
         }
     }
 
-    if (optind != argc - 1) 
-    {
+    if (optind != argc - 1)
+    { 
         std::cerr << "Expected single argument after options." << std::endl;
         exit(EXIT_FAILURE);
     }
@@ -78,7 +79,7 @@ int main(int argc, char** argv)
     }
     else
     {
-      std::cout << "error: only " << infile.gcount() << " could be read";
+      std::cout << "error: only " << infile.gcount() << " could be read\n";
     }
     infile.close();
     

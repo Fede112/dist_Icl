@@ -15,7 +15,6 @@ int main(int argc, char** argv)
 {
     //-------------------------------------------------------------------------
     // Argument parser
-    //-------------------------------------------------------------------------
 
     int opt;
     std::string inFilename;
@@ -29,12 +28,10 @@ int main(int argc, char** argv)
         //     break;
         case 'h':
             // go to default
-            std::cout << "Reads dist_Icl binary output file and outputs it to terminal." << std::endl;
-            std::cout << "Usage: " << argv[0] << " file.bin" << std::endl;
-            break;
 
         default: /* '?' */
             std::cout << "Usage: " << argv[0] << " file.bin" << std::endl;
+            std::cout << "Description: reads dist_Icl binary output file and outputs it to terminal." << std::endl;
             exit(EXIT_FAILURE);
         }
     }

@@ -1,11 +1,11 @@
-/* -----------------------------------------------------------------------------
-* Temporary script to patch the differences between the output of the primary 
-* clustering algorithm and the input of the distance matrix (dist_Icl) algorithm
-* for metaclustering.
-*
-* text input: queryID, center, searchID, searchStart, searchEnd
-* binary output: smallCA structure
------------------------------------------------------------------------------ */
+// -----------------------------------------------------------------------------
+// Temporary script to patch the differences between the output of the primary 
+// clustering algorithm and the input of the distance matrix (dist_Icl) algorithm
+// for metaclustering.
+//
+// text input: queryID, center, searchID, searchStart, searchEnd
+// binary output: smallCA structure
+// -----------------------------------------------------------------------------
 
 #include <algorithm>
 #include <fstream>
@@ -74,16 +74,13 @@ int main(int argc, char** argv)
 
     //-------------------------------------------------------------------------
     // Argument parser
-    //-------------------------------------------------------------------------
+
     int opt;
     std::string output{"output.bin"}; 
     std::string input;
 
     while ((opt = getopt(argc, argv, "ho:")) != -1) 
     {
-        std::cout << "opt: " << opt << '\n';
-        std::cout << "argc: " << argc << '\n';
-        std::cout << "opt: " << opt << '\n';
         switch (opt) 
         {
         case 'o':
@@ -93,22 +90,27 @@ int main(int argc, char** argv)
             // go to default
 
         default: /* '?' */
-            fprintf(stderr, "Usage: %s input.txt [-o output.bin] \n", argv[0]);
+            std::cerr << "\nUsage: "<< argv[0] << " INPUT [-o OUTPUT] \n\n";
+            std::cerr << "\t INPUT      input filename \n\n";
+            std::cerr << "\t -o OUTPUT  output filename (it will use a default name otherwise) \n\n";
+            std::cerr << "Description:\n\t" << argv[0] << " transforms dist_Icl input from csv to binary format.\n\n";
+            std::cerr << "\t input format: queryID, center, searchID, searchStart, searchEnd.\n";
+            std::cerr << "\t output format: smallCA structure.\n\n";
             exit(EXIT_FAILURE);
         }
     }
 
     if (optind != argc - 1) 
     {
-        std::cerr << "Please input file name." << std::endl;
-        fprintf(stderr, "Usage: %s input.txt [-o output.bin] \n", argv[0]);
+        std::cerr << "Please input file name." << "\n";
+        std::cerr << "\nUsage: "<< argv[0] << " INPUT [-o OUTPUT] \n\n";
         exit(EXIT_FAILURE);
     }
     else
     {
         input = argv[optind];
-        std::cout << "Input: " << input << std::endl;
-        std::cout << "Output: " << output << std::endl;
+        std::cerr << "Input: " << input << "\n";
+        std::cerr << "Output: " << output << "\n";
     }
 
     
