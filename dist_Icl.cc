@@ -324,7 +324,6 @@ int main(int argc, char** argv) {
 
     //-------------------------------------------------------------------------
     // Argument parser
-    //-------------------------------------------------------------------------
 
     int opt;
     std::string output{"output.bin"}; 
@@ -371,7 +370,9 @@ int main(int argc, char** argv) {
         exit(EXIT_FAILURE);
     }
     
-    ////////////////////////////////////////////////////////////////////////
+    //-------------------------------------------------------------------------
+    
+
 
     std::cout << "producers: " << PRODUCER_THREADS << '\n';
     std::cout << "consumers: " << CONSUMER_THREADS << '\n';
@@ -429,7 +430,7 @@ int main(int argc, char** argv) {
     // Define qIDs balanced partition per thread
     balanced_partition(qIDs_partition);
     
-    //---------------------------------------------------------------------------------------------------------
+
     auto t1_processing = std::chrono::high_resolution_clock::now();   
     
     // Producer thread

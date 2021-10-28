@@ -90,12 +90,15 @@ int main(int argc, char** argv)
             // go to default
 
         default: /* '?' */
-            std::cerr << "\nUsage: "<< argv[0] << " INPUT [-o OUTPUT] \n\n";
+            std::cerr << "Usage: \n";
+            std::cerr << "\t " << argv[0] << " INPUT [-o OUTPUT] \n\n";
             std::cerr << "\t INPUT      input filename \n\n";
             std::cerr << "\t -o OUTPUT  output filename (it will use a default name otherwise) \n\n";
-            std::cerr << "Description:\n\t" << argv[0] << " transforms dist_Icl input from csv to binary format.\n\n";
-            std::cerr << "\t input format: queryID, center, searchID, searchStart, searchEnd.\n";
-            std::cerr << "\t output format: smallCA structure.\n\n";
+            std::cerr << "Description:\n\t" << argv[0] << " transforms primary cluster output to be compliant with dist_Icl input. \n\n";
+            std::cerr << "\t It merges queryID and center into a single column: pcID = queryID + 100*center.\n";
+            std::cerr << "\t It adds an extra column which specifies the size of each primary cluster (pcID). \n\n";
+            std::cerr << "\t Input format [csv]: queryID, center, searchID, searchStart, searchEnd.\n";
+            std::cerr << "\t Output format [binary]: smallCA structure.\n\n";
             exit(EXIT_FAILURE);
         }
     }

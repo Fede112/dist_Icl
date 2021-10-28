@@ -101,7 +101,8 @@ int main(int argc, char *argv[])
             // go to default
 
         default: /* '?' */
-            std::cerr << "\nUsage: "<< argv[0] << " INPUT1 INPUT2 ... [-o OUTPUT] \n\n";
+            std::cerr << "Usage: \n";
+            std::cerr << "\t " << argv[0] << " INPUT1 INPUT2 ... [-o OUTPUT] \n\n";
             std::cerr << "\t INPUTs     list of files to be merged \n\n";
             std::cerr << "\t -o OUTPUT  output filename (it will use a default name otherwise) \n\n";
             std::cerr << "Description:\n\t k-way merge of dist_Icl output binary files.\n\n";

@@ -22,12 +22,12 @@ int main(int argc, char** argv)
             break;
         case 'h':
             // go to default
-            std::cout << "Reads dist_Icl binary output file and modifies distance to be 1-distance." << std::endl;
-            std::cout << "Usage: " << argv[0] << " file.bin" << std::endl;
-            break;
 
         default: /* '?' */
-            std::cout << "Usage: " << argv[0] << " file.bin" << std::endl;
+            std::cerr << "Usage: \n";
+            std::cerr << "\t " << argv[0] << " INPUT\n\n";
+            std::cerr << "\t INPUT      input binary file \n\n";
+            std::cerr << "Description:\n\t" << argv[0] << " reads dist_Icl binary output file and modifies the distance to be 1-distance.\n\n";
             exit(EXIT_FAILURE);
         }
     }

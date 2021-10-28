@@ -33,10 +33,11 @@ int main(int argc, char** argv)
             // go to default
 
         default: /* '?' */
-            std::cout << "\nUsage: " << argv[0] << " INPUT \n\n";
+            std::cout << "Usage: \n";
+            std::cerr << "\t " << argv[0] << " INPUT \n\n";
             std::cerr << "\t INPUT      input filename \n\n";
-            std::cerr << "Description:\n\t" << argv[0] << " reads dist_Icl binary input and outputs it to terminal.\n\n";
-            std::cerr << "\t input format: queryID+center, query size, searchID, searchStart, searchEnd.\n";
+            std::cerr << "Description:\n\t " << argv[0] << " reads dist_Icl binary input and outputs it to terminal.\n\n";
+            std::cerr << "\t Input format: queryID+center, query size, searchID, searchStart, searchEnd.\n\n";
             exit(EXIT_FAILURE);
         }
     }
@@ -49,7 +50,7 @@ int main(int argc, char** argv)
     else
     {
         inFilename = argv[optind];
-        std::cout << "Input: " << inFilename << std::endl;
+        std::cerr << "Input: " << inFilename << std::endl;
     }
 
     //-------------------------------------------------------------------------

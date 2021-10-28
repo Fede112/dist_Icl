@@ -34,16 +34,11 @@ run:$(EXE)
 
 clean:
 	rm -rf *~ $(OBJS) *.x
-	$(MAKE) $(MFLAGS) clean  -C ./pipeline/
 
 
 
 aux:
 	$(MAKE) $(MFLAGS) -C ./aux/
-
-pipeline:
-	$(MAKE) $(MFLAGS) -C ./pipeline/
-
 
 
 debug: CXXFLAGS += $(DEBUG)
@@ -58,4 +53,4 @@ check: output
 output: $(EXE) aux
 	./reference/output_test.sh
 
-.PHONY: default clean aux pipeline run debug test
+.PHONY: default clean aux run debug test

@@ -30,8 +30,10 @@ int main(int argc, char** argv)
             // go to default
 
         default: /* '?' */
-            std::cout << "Usage: " << argv[0] << " file.bin" << std::endl;
-            std::cout << "Description: reads dist_Icl binary output file and outputs it to terminal." << std::endl;
+            std::cerr << "Usage: \n";
+            std::cerr << "\t " << argv[0] << " INPUT\n\n";
+            std::cerr << "\t INPUT      input filename \n\n";
+            std::cerr << "Description:\n\t Reads dist_Icl binary output file and outputs it to terminal.\n\n";
             exit(EXIT_FAILURE);
         }
     }
