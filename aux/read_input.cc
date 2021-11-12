@@ -2,7 +2,7 @@
 // Reads dist_Icl binary input and outputs it to terminal
 // 
 // The output consists of 4 columns: 
-// queryID*100 + center, searchID (s), search start (ss), search end (se)
+// queryID*100 + center, query size, searchID (s), search start (ss), search end (se)
 // -----------------------------------------------------------------------------
 
 #include <fstream>

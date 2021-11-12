@@ -8,7 +8,7 @@ LDFLAGS= -lpthread
 DEBUG= -g -ggdb
 
 EXE=dist_Icl.x
-OBJS=dist_Icl.o src/normalization.o
+OBJS=src/dist_Icl.o src/normalization.o
 
 default: $(EXE)
 
