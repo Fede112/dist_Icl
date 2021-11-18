@@ -340,23 +340,32 @@ int main(int argc, char** argv) {
             // go to default
 
         default: /* '?' */
-            fprintf(stderr, "Usage: %s input1.bin input2.bin -o output.bin \n", argv[0]);
+            std::cerr << "Usage: \n";
+            std::cerr << "\t " << argv[0] << " INPUT_A INPUT_B [-o OUTPUT] \n\n";
+            std::cerr << "\t INPUT_A      input block A \n\n";
+            std::cerr << "\t INPUT_B      input block B \n\n";
+            std::cerr << "\t -o OUTPUT  output filename (it will use a default name otherwise) \n\n";
+            std::cerr << "Description:\n\t" << argv[0] << " computes the distance between primary clusters in block A and B. \n\n";
+            std::cerr << "\t For any two primary clusters in block A and B it counts the number of overlapping sequences between them. \n";
+            std::cerr << "\t Distance between the clusters is obtained by normalizing the total count by the size of the smaller primary cluster. \n\n";
+            std::cerr << "\t Input format [binary]: primaryCluster, searchID, searchStart, searchEnd.\n";
+            std::cerr << "\t Output format [binary]: primaryClusterA, primaryClusterB, distance.\n\n";
             exit(EXIT_FAILURE);
         }
     }
 
     if (optind+1 >= argc) 
     {
-        fprintf(stderr, "Expected two arguments after options\n");
+        std::cerr << "Expected two arguments after options\n";
         exit(EXIT_FAILURE);
     }
 
     input1 = argv[optind];
     input2 = argv[optind+1];
 
-    std::cout << "Input 1: " <<  input1 << '\n';
-    std::cout << "Input 2: " <<  input2 << '\n';
-    std::cout << "Output: " <<  output << '\n';
+    std::cerr << "Input 1: " <<  input1 << '\n';
+    std::cerr << "Input 2: " <<  input2 << '\n';
+    std::cerr << "Output: " <<  output << '\n';
 
     if (input1.compare(input2) == 0 && COUNT_FACTOR != 2)
     {
