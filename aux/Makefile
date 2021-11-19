@@ -23,8 +23,8 @@ kmerge_binary.o: CXXFLAGS+=-fopenmp
 kmerge_binary.x: LDFLAGS+=-fopenmp
 input2binary.x: ../src/normalization.o
 
-# %.o: %.cc
-# 	$(CXX) -c $< -o $@  $(CXXFLAGS) 
+%.o: %.cc
+	$(CXX) -c $< -o $@  $(CXXFLAGS) 
 
 
 # debug: CXXFLAGS += $(DEBUG)
@@ -33,6 +33,6 @@ input2binary.x: ../src/normalization.o
 # 	valgrind ./${EXE}
 
 clean:
-	rm -rf *~  $(EXE) ../src/normalization.x 
+	rm -rf *~  $(EXE) ../src/normalization.o
 
 .PHONY: default clean
